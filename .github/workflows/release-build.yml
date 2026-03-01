@@ -56,24 +56,21 @@ jobs:
       - name: Package artifacts
         run: |
           TAG="${{ steps.vars.outputs.tag }}"
+          mkdir -p .release-bundle
           mkdir -p .release-artifacts
-          tar -czf ".release-artifacts/workspace-api-${TAG}.tar.gz" -C apps/api dist
-          tar -czf ".release-artifacts/workspace-web-${TAG}.tar.gz" -C apps/web dist
+          rsync -a \
+            --exclude ".git" \
+            --exclude "node_modules" \
+            --exclude ".turbo" \
+            --exclude ".release-artifacts" \
+            ./ .release-bundle/
+          tar -czf ".release-artifacts/workspace-${TAG}.tar.gz" -C .release-bundle .
 
-      - name: Upload API asset
+      - name: Upload release bundle
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: .release-artifacts/workspace-api-${{ steps.vars.outputs.tag }}.tar.gz
-          asset_name: workspace-api-${{ steps.vars.outputs.tag }}.tar.gz
-          tag: ${{ steps.vars.outputs.tag }}
-          overwrite: true
-
-      - name: Upload Web asset
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: .release-artifacts/workspace-web-${{ steps.vars.outputs.tag }}.tar.gz
-          asset_name: workspace-web-${{ steps.vars.outputs.tag }}.tar.gz
+          file: .release-artifacts/workspace-${{ steps.vars.outputs.tag }}.tar.gz
+          asset_name: workspace-${{ steps.vars.outputs.tag }}.tar.gz
           tag: ${{ steps.vars.outputs.tag }}
           overwrite: true

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite --clearScreen false",
     "build": "tsc && vite build",
+    "start": "vite preview --host 0.0.0.0 --port 5001 --strictPort",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.ts\""
   },

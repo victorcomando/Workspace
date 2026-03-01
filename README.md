@@ -48,6 +48,15 @@ pnpm --filter web dev
 - API: `http://localhost:5000`
 - Web: `http://localhost:5001`
 
+## Execução (build/produção)
+
+```bash
+pnpm install
+pnpm start
+```
+
+Observação: em release oficial, o artefato já inclui `dist` da API e Web.
+
 ## Variáveis de ambiente
 
 - API: configure `DATABASE_URL` em `apps/api/.env`

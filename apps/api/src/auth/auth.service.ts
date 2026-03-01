@@ -42,18 +42,21 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
-  private normalizeEmail(email: string) {
+  private normalizeEmail(email: unknown) {
+    if (typeof email !== 'string') {
+      return '';
+    }
     return email.trim().toLowerCase();
   }
 
-  private validateCredentials(email: string, password: string) {
+  private validateCredentials(email: unknown, password: unknown) {
     const normalizedEmail = this.normalizeEmail(email);
 
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
       throw new BadRequestException('email invalido');
     }
 
-    if (!password || password.length < 6) {
+    if (typeof password !== 'string' || password.length < 6) {
       throw new BadRequestException('senha deve ter ao menos 6 caracteres');
     }
 
@@ -93,8 +96,9 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string): Promise<AuthResponse> {
+  async register(email: unknown, password: unknown): Promise<AuthResponse> {
     const normalizedEmail = this.validateCredentials(email, password);
+    const safePassword = password as string;
 
     const existing = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -108,7 +112,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         email: normalizedEmail,
-        passwordHash: this.hashPassword(password),
+        passwordHash: this.hashPassword(safePassword),
       },
       select: {
         id: true,
@@ -119,8 +123,9 @@ export class AuthService {
     return this.createSession(user.id, user.email);
   }
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(email: unknown, password: unknown): Promise<AuthResponse> {
     const normalizedEmail = this.validateCredentials(email, password);
+    const safePassword = password as string;
 
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -131,7 +136,7 @@ export class AuthService {
       },
     });
 
-    if (!user || !this.verifyPassword(password, user.passwordHash)) {
+    if (!user || !this.verifyPassword(safePassword, user.passwordHash)) {
       throw new UnauthorizedException('credenciais invalidas');
     }
 

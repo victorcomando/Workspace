@@ -13,6 +13,7 @@ import {
 } from "@coreui/react";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAppToast } from "../hooks/use-app-toast.tsx";
 
 type Workday = {
   id: number;
@@ -58,8 +59,8 @@ export const CalendarPage = () => {
   const [obs, setObs] = useState("");
   const [worked, setWorked] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const { showToast, toaster } = useAppToast();
 
   const toMonthAnchor = (date: Date) =>
     new Date(date.getFullYear(), date.getMonth(), 1);
@@ -78,10 +79,14 @@ export const CalendarPage = () => {
       setItems(payload.data);
     };
 
-    load().catch(() => {
+    load().catch((error) => {
       setItems([]);
+      showToast(
+        error instanceof Error ? error.message : "Falha ao carregar workdays",
+        { title: "Calendário", color: "danger" },
+      );
     });
-  }, [visibleDate, reloadTick]);
+  }, [visibleDate, reloadTick, showToast]);
 
   const workdaysByDate = useMemo(() => {
     const map = new Map<string, Workday[]>();
@@ -122,7 +127,6 @@ export const CalendarPage = () => {
     const jobs = workdaysByDate.get(key) ?? [];
 
     setSelectedDate(key);
-    setErrorMessage("");
 
     if (jobs.length > 0) {
       const firstJob = jobs[0];
@@ -163,7 +167,10 @@ export const CalendarPage = () => {
       return;
     }
     if (!jobName.trim()) {
-      setErrorMessage("Informe o nome do trabalho.");
+      showToast("Informe o nome do trabalho.", {
+        title: "Calendário",
+        color: "warning",
+      });
       return;
     }
 
@@ -174,7 +181,6 @@ export const CalendarPage = () => {
     const method = isEditing ? "PATCH" : "POST";
 
     setSaving(true);
-    setErrorMessage("");
 
     try {
       const response = await fetch(url, {
@@ -203,8 +209,9 @@ export const CalendarPage = () => {
       setModalVisible(false);
       setReloadTick((value) => value + 1);
     } catch (error) {
-      setErrorMessage(
+      showToast(
         error instanceof Error ? error.message : "Falha ao salvar trabalho",
+        { title: "Calendário", color: "danger" },
       );
     } finally {
       setSaving(false);
@@ -216,14 +223,16 @@ export const CalendarPage = () => {
   const deleteWorkday = async () => {
     if (!selectedJobId || selectedJobId === "new") return;
     setSaving(true);
-    setErrorMessage("");
     try {
       const response = await fetch(`/api/v1/workdays/${selectedJobId}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Falha ao remover trabalho");
       setModalVisible(false);
       setReloadTick((v) => v + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Falha ao remover trabalho");
+      showToast(
+        err instanceof Error ? err.message : "Falha ao remover trabalho",
+        { title: "Calendário", color: "danger" },
+      );
     } finally {
       setSaving(false);
     }
@@ -384,7 +393,6 @@ export const CalendarPage = () => {
             onChange={(event) => setWorked(event.target.checked)}
           />
 
-          {errorMessage && <p className="modal-error">{errorMessage}</p>}
         </CModalBody>
         <CModalFooter>
           {selectedJobId !== "new" && (
@@ -413,6 +421,7 @@ export const CalendarPage = () => {
           </CModalFooter>
         </CModal>
       </CModal>
+      {toaster}
     </section>
   );
 };

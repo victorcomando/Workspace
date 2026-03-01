@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAppToast } from '../hooks/use-app-toast.tsx';
 
 type SalarySummary = {
   totalDailyEarnings: number;
@@ -20,11 +21,8 @@ type WorkdaysResponse = {
   data: Workday[];
 };
 
-type SalaryConfig = {
-  id: number;
-  local: string;
-  tipo: 'diaria' | 'fixo';
-  valor: number;
+type WorkExportResponse = {
+  message: string;
 };
 
 const numberFormatter = new Intl.NumberFormat('pt-BR', {
@@ -33,27 +31,23 @@ const numberFormatter = new Intl.NumberFormat('pt-BR', {
 });
 
 const formatMoney = (value: number) => numberFormatter.format(value);
-const formatDate = (value: string) => new Date(value).toLocaleDateString('pt-BR');
 
 export const ReportsPage = () => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null);
   const [salaryLoading, setSalaryLoading] = useState(false);
-  const [salaryError, setSalaryError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'salary' | 'work' | 'coming'>('salary');
 
   const [workdays, setWorkdays] = useState<Workday[]>([]);
-  const [configs, setConfigs] = useState<SalaryConfig[]>([]);
   const [workLoading, setWorkLoading] = useState(false);
-  const [workError, setWorkError] = useState<string | null>(null);
   const [includeValues, setIncludeValues] = useState(false);
   const [selectedJob, setSelectedJob] = useState('all');
   const [workMessage, setWorkMessage] = useState('');
+  const { showToast, toaster } = useAppToast();
 
   const fetchSalarySummary = async (targetMonth: number, targetYear: number) => {
     setSalaryLoading(true);
-    setSalaryError(null);
     try {
       const response = await fetch(
         `/api/v1/salary/summary?month=${targetMonth}&year=${targetYear}`,
@@ -64,7 +58,10 @@ export const ReportsPage = () => {
       const data: SalarySummary = await response.json();
       setSalarySummary(data);
     } catch (e) {
-      setSalaryError(e instanceof Error ? e.message : 'Erro desconhecido');
+      showToast(e instanceof Error ? e.message : 'Erro desconhecido', {
+        title: 'Relatórios',
+        color: 'danger',
+      });
     } finally {
       setSalaryLoading(false);
     }
@@ -75,7 +72,6 @@ export const ReportsPage = () => {
     const end = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999).toISOString();
 
     setWorkLoading(true);
-    setWorkError(null);
     try {
       const response = await fetch(
         `/api/v1/workdays?page=1&limit=500&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
@@ -87,22 +83,12 @@ export const ReportsPage = () => {
       setWorkdays(payload.data ?? []);
     } catch (e) {
       setWorkdays([]);
-      setWorkError(e instanceof Error ? e.message : 'Erro desconhecido');
+      showToast(e instanceof Error ? e.message : 'Erro desconhecido', {
+        title: 'Relatórios',
+        color: 'danger',
+      });
     } finally {
       setWorkLoading(false);
-    }
-  };
-
-  const fetchConfigs = async () => {
-    try {
-      const response = await fetch('/api/v1/salary/configs');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: SalaryConfig[] = await response.json();
-      setConfigs(data ?? []);
-    } catch {
-      setConfigs([]);
     }
   };
 
@@ -110,12 +96,6 @@ export const ReportsPage = () => {
     void fetchSalarySummary(month, year);
     void fetchWorkdays(month, year);
   }, [month, year]);
-
-  useEffect(() => {
-    if (activeTab === 'work') {
-      void fetchConfigs();
-    }
-  }, [activeTab]);
 
   const availableJobs = useMemo(() => {
     const uniqueJobs = Array.from(
@@ -152,113 +132,66 @@ export const ReportsPage = () => {
     }
   };
 
-  const generateWorkMessage = () => {
-    const configMap = new Map(configs.map((item) => [item.local.trim().toLowerCase(), item]));
-    const selectedJobName = selectedJob === 'all' ? null : selectedJob;
-    const sorted = [...workdays]
-      .filter((item) => (selectedJobName ? item.jobName === selectedJobName : true))
-      .sort((a, b) => a.date.localeCompare(b.date));
+  const generateWorkMessage = async () => {
+    setWorkLoading(true);
 
-    if (sorted.length === 0) {
-      setWorkMessage(
-        selectedJobName
-          ? `Relatório de trabalhos - ${monthNames[month - 1]}/${year}\n\nNenhum trabalho registrado para ${selectedJobName}.`
-          : `Relatório de trabalhos - ${monthNames[month - 1]}/${year}\n\nNenhum trabalho registrado neste mês.`,
+    try {
+      const response = await fetch(
+        `/api/v1/reports/work-export?month=${month}&year=${year}&job=${encodeURIComponent(selectedJob)}&includeValues=${includeValues ? 'true' : 'false'}`,
       );
-      return;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const payload: WorkExportResponse = await response.json();
+      setWorkMessage(payload.message ?? '');
+    } catch (error) {
+      setWorkMessage('');
+      showToast(error instanceof Error ? error.message : 'Erro desconhecido', {
+        title: 'Relatórios',
+        color: 'danger',
+      });
+    } finally {
+      setWorkLoading(false);
     }
-
-    const lines = sorted.map((item) => {
-      const mark = item.worked ? 'x' : ' ';
-      const base = `( ${mark} ) ${formatDate(item.date)}`;
-      const suffixJob = selectedJobName ? '' : ` - ${item.jobName}`;
-      if (selectedJobName) {
-        return `${base}${suffixJob}`;
-      }
-      if (!includeValues) {
-        return `${base}${suffixJob}`;
-      }
-
-      const config = configMap.get(item.jobName.trim().toLowerCase());
-      if (!item.worked) {
-        return `${base}${suffixJob}`;
-      }
-      if (!config) {
-        return `${base}${suffixJob} - sem valor`;
-      }
-      if (config.tipo === 'fixo') {
-        return `${base}${suffixJob} - fixo mensal`;
-      }
-      return `${base}${suffixJob} - R$ ${formatMoney(config.valor)}`;
-    });
-
-    if (selectedJobName) {
-      const selectedConfig = configMap.get(selectedJobName.trim().toLowerCase());
-      const workedCount = sorted.filter((item) => item.worked).length;
-      const totalCount = sorted.length;
-      const totalToReceive =
-        selectedConfig?.tipo === 'diaria'
-          ? workedCount * selectedConfig.valor
-          : selectedConfig?.tipo === 'fixo' && workedCount > 0
-            ? selectedConfig.valor
-            : 0;
-
-      const headerWithValue =
-        includeValues && selectedConfig
-          ? `${selectedJobName} (R$ ${formatMoney(selectedConfig.valor)})`
-          : selectedJobName;
-
-      const totalsLine = `Total de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${formatMoney(totalToReceive)}`;
-
-      setWorkMessage(`${headerWithValue}\n${lines.join('\n')}\n\n${totalsLine}`);
-      return;
-    }
-
-    const jobs = Array.from(new Set(sorted.map((item) => item.jobName)));
-    const groupedSections: string[] = [];
-    let grandTotalToReceive = 0;
-
-    for (const jobName of jobs) {
-      const jobItems = sorted.filter((item) => item.jobName === jobName);
-      const workedCount = jobItems.filter((item) => item.worked).length;
-      const totalCount = jobItems.length;
-      const config = configMap.get(jobName.trim().toLowerCase());
-      const totalToReceive =
-        config?.tipo === 'diaria'
-          ? workedCount * config.valor
-          : config?.tipo === 'fixo' && workedCount > 0
-            ? config.valor
-            : 0;
-
-      grandTotalToReceive += totalToReceive;
-
-      const header =
-        includeValues && config ? `${jobName} (R$ ${formatMoney(config.valor)})` : jobName;
-      const jobLines = jobItems
-        .map((item) => {
-          const mark = item.worked ? 'x' : ' ';
-          return `( ${mark} ) ${formatDate(item.date)}`;
-        })
-        .join('\n');
-
-      groupedSections.push(
-        `${header}\n${jobLines}\n\nTotal de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${formatMoney(totalToReceive)}`,
-      );
-    }
-
-    setWorkMessage(
-      `Relatório de trabalhos - ${monthNames[month - 1]}/${year}\n\n${groupedSections.join('\n\n')}\n\nSoma total a receber: R$ ${formatMoney(grandTotalToReceive)}`,
-    );
   };
 
   const copyWorkMessage = async () => {
     if (!workMessage.trim()) {
+      showToast('Nada para copiar.', {
+        title: 'Relatórios',
+        color: 'warning',
+      });
       return;
     }
+
     try {
-      await navigator.clipboard.writeText(workMessage);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(workMessage);
+        showToast('Mensagem copiada.', { title: 'Relatórios', color: 'success' });
+        return;
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = workMessage;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      if (!copied) {
+        throw new Error('Falha ao copiar');
+      }
+
+      showToast('Mensagem copiada.', { title: 'Relatórios', color: 'success' });
     } catch {
-      /* noop */
+      showToast('Falha ao copiar. Copie manualmente a caixa de texto.', {
+        title: 'Relatórios',
+        color: 'danger',
+      });
     }
   };
 
@@ -327,32 +260,27 @@ export const ReportsPage = () => {
       )}
 
       {activeTab === 'salary' && (
-        <>
-          {salaryError && <p className="modal-error reports-error">Erro: {salaryError}</p>}
+        <article className="reports-card">
+          <h3>Resumo Mensal</h3>
+          {salaryLoading && <p className="notes-state">Carregando resumo...</p>}
 
-          <article className="reports-card">
-            <h3>Resumo Mensal</h3>
-            {salaryLoading && <p className="notes-state">Carregando resumo...</p>}
-
-            {salarySummary && !salaryLoading && (
-              <div className="summary-kpis">
-                <div className="summary-kpi">
-                  <span className="label">Ganhos Diários</span>
-                  <span className="value">R$ {formatMoney(salarySummary.totalDailyEarnings)}</span>
-                </div>
-                <div className="summary-kpi">
-                  <span className="label">Ganhos Fixos</span>
-                  <span className="value">R$ {formatMoney(salarySummary.totalFixedEarnings)}</span>
-                </div>
-                <div className="summary-kpi summary-kpi--total">
-                  <span className="label">Total Mensal</span>
-                  <span className="value">R$ {formatMoney(salarySummary.totalMonthlyEarnings)}</span>
-                </div>
+          {salarySummary && !salaryLoading && (
+            <div className="summary-kpis">
+              <div className="summary-kpi">
+                <span className="label">Ganhos Diários</span>
+                <span className="value">R$ {formatMoney(salarySummary.totalDailyEarnings)}</span>
               </div>
-            )}
-
-          </article>
-        </>
+              <div className="summary-kpi">
+                <span className="label">Ganhos Fixos</span>
+                <span className="value">R$ {formatMoney(salarySummary.totalFixedEarnings)}</span>
+              </div>
+              <div className="summary-kpi summary-kpi--total">
+                <span className="label">Total Mensal</span>
+                <span className="value">R$ {formatMoney(salarySummary.totalMonthlyEarnings)}</span>
+              </div>
+            </div>
+          )}
+        </article>
       )}
 
       {activeTab === 'work' && (
@@ -382,7 +310,11 @@ export const ReportsPage = () => {
               />
               <span>Exportar com valores</span>
             </label>
-            <button type="button" className="pager-btn btn-brand" onClick={generateWorkMessage}>
+            <button
+              type="button"
+              className="pager-btn btn-brand"
+              onClick={() => void generateWorkMessage()}
+            >
               Gerar mensagem
             </button>
             <button type="button" className="pager-btn" onClick={() => void copyWorkMessage()}>
@@ -391,8 +323,6 @@ export const ReportsPage = () => {
           </div>
 
           {workLoading && <p className="notes-state">Carregando trabalhos...</p>}
-          {workError && <p className="modal-error reports-error">Erro: {workError}</p>}
-
           {!workLoading && (
             <div className="reports-export-box">
               <textarea
@@ -412,6 +342,7 @@ export const ReportsPage = () => {
           <p className="notes-state">Esta seção será implementada em breve.</p>
         </article>
       )}
+      {toaster}
     </section>
   );
 };

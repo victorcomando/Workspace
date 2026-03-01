@@ -8,6 +8,7 @@ import {
   CModalHeader,
   CModalTitle,
 } from '@coreui/react';
+import { useAppToast } from '../hooks/use-app-toast.tsx';
 
 type SalaryConfig = {
   id: number;
@@ -27,7 +28,6 @@ export const SettingsPage = () => {
   const [configs, setConfigs] = useState<SalaryConfig[]>([]);
   const [knownLocals, setKnownLocals] = useState<string[]>([]);
   const [configLoading, setConfigLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'salary' | 'coming'>('salary');
 
@@ -37,10 +37,10 @@ export const SettingsPage = () => {
   const [customLocal, setCustomLocal] = useState(false);
   const [tipo, setTipo] = useState<'diaria' | 'fixo'>('diaria');
   const [valor, setValor] = useState('');
+  const { showToast, toaster } = useAppToast();
 
   const fetchConfigs = async () => {
     setConfigLoading(true);
-    setError(null);
     try {
       const response = await fetch('/api/v1/salary/configs');
       if (!response.ok) {
@@ -49,7 +49,10 @@ export const SettingsPage = () => {
       const data: SalaryConfig[] = await response.json();
       setConfigs(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido');
+      showToast(e instanceof Error ? e.message : 'Erro desconhecido', {
+        title: 'Configurações',
+        color: 'danger',
+      });
     } finally {
       setConfigLoading(false);
     }
@@ -91,17 +94,22 @@ export const SettingsPage = () => {
     const numericValor = Number(valor);
 
     if (!trimmedLocal) {
-      setError('Informe o local/trabalho.');
+      showToast('Informe o local/trabalho.', {
+        title: 'Configurações',
+        color: 'warning',
+      });
       return;
     }
 
     if (!Number.isFinite(numericValor) || numericValor < 0) {
-      setError('Informe um valor válido.');
+      showToast('Informe um valor válido.', {
+        title: 'Configurações',
+        color: 'warning',
+      });
       return;
     }
 
     setConfigLoading(true);
-    setError(null);
     try {
       const response = await fetch(
         editingId ? `/api/v1/salary/configs/${editingId}` : '/api/v1/salary/configs',
@@ -132,8 +140,15 @@ export const SettingsPage = () => {
       await fetchKnownLocals();
       setModalVisible(false);
       resetForm();
+      showToast('Configuração salva com sucesso.', {
+        title: 'Configurações',
+        color: 'success',
+      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido');
+      showToast(e instanceof Error ? e.message : 'Erro desconhecido', {
+        title: 'Configurações',
+        color: 'danger',
+      });
     } finally {
       setConfigLoading(false);
     }
@@ -141,7 +156,6 @@ export const SettingsPage = () => {
 
   const removeConfig = async (id: number) => {
     setConfigLoading(true);
-    setError(null);
     try {
       const response = await fetch(`/api/v1/salary/configs/${id}`, {
         method: 'DELETE',
@@ -154,8 +168,15 @@ export const SettingsPage = () => {
       if (editingId === id) {
         resetForm();
       }
+      showToast('Configuração removida com sucesso.', {
+        title: 'Configurações',
+        color: 'success',
+      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido');
+      showToast(e instanceof Error ? e.message : 'Erro desconhecido', {
+        title: 'Configurações',
+        color: 'danger',
+      });
     } finally {
       setConfigLoading(false);
     }
@@ -210,9 +231,6 @@ export const SettingsPage = () => {
           </button>
         </div>
       </header>
-
-      {error && <p className="modal-error reports-error">Erro: {error}</p>}
-
       {activeTab === 'salary' && (
         <article className="reports-card reports-card--configs">
           <div className="reports-configs-header">
@@ -355,6 +373,7 @@ export const SettingsPage = () => {
           </button>
         </CModalFooter>
       </CModal>
+      {toaster}
     </section>
   );
 };

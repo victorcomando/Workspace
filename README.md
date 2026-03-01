@@ -19,29 +19,45 @@ Plataforma para gestão pessoal de rotina de trabalho, calendário, notas e fech
 
 ## Preview
 
-### Login
+<details>
+  <summary>Ver screenshots (clique para expandir)</summary>
 
-![Login](https://i.imgur.com/wXpywM1.png)
+  <p>
+    <a href="https://i.imgur.com/wXpywM1.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/wXpywM1.png" alt="Login" width="900" />
+    </a>
+  </p>
 
-### Sessão invalidada
+  <p>
+    <a href="https://i.imgur.com/QGBf7xm.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/QGBf7xm.png" alt="Sessão invalidada" width="900" />
+    </a>
+  </p>
 
-![Sessão invalidada](https://i.imgur.com/QGBf7xm.png)
+  <p>
+    <a href="https://i.imgur.com/thBAPlK.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/thBAPlK.png" alt="Dashboard tema escuro" width="900" />
+    </a>
+  </p>
 
-### Dashboard (tema escuro)
+  <p>
+    <a href="https://i.imgur.com/B4wq4hM.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/B4wq4hM.png" alt="Calendário" width="900" />
+    </a>
+  </p>
 
-![Dashboard escuro](https://i.imgur.com/thBAPlK.png)
+  <p>
+    <a href="https://i.imgur.com/2JzVi6c.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/2JzVi6c.png" alt="Bloco de notas" width="900" />
+    </a>
+  </p>
 
-### Calendário
-
-![Calendário](https://i.imgur.com/B4wq4hM.png)
-
-### Bloco de notas
-
-![Bloco de notas](https://i.imgur.com/2JzVi6c.png)
-
-### Mobile
-
-![Dashboard mobile](https://i.imgur.com/UNVS1he.png)
+  <p>
+    <a href="https://i.imgur.com/UNVS1he.png" target="_blank" rel="noopener noreferrer">
+      <img src="https://i.imgur.com/UNVS1he.png" alt="Dashboard mobile" width="320" />
+    </a>
+  </p>
+</details>
 
 ## Estrutura
 

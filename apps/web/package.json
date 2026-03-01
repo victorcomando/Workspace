@@ -1,7 +1,9 @@
 {
   "name": "web",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Frontend React/Vite do Workspace.",
+  "author": "Victor Comando",
   "type": "module",
   "scripts": {
     "dev": "vite --clearScreen false",

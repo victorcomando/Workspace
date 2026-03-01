@@ -1,65 +1,81 @@
 # Workspace
 
-Aplicação web para gestão pessoal de rotina de trabalho, calendário, notas e fechamento salarial mensal.
+Plataforma para gestão pessoal de rotina de trabalho, calendário, notas e fechamento salarial mensal.
 
-## Visão Geral
+## Stack
 
-O projeto nasceu para uso pessoal e evoluiu para um case de portfólio com foco em:
-
-- organização de dias trabalhados;
-- controle de observações por dia;
-- configuração de salário por local de trabalho;
-- resumo mensal com separação entre ganhos fixos e diários.
+- Monorepo com `pnpm` + `turbo`
+- `apps/api`: NestJS + Prisma
+- `apps/web`: React + Vite + CoreUI
 
 ## Funcionalidades
 
-- Autenticação com registro e login.
-- Sessão única por usuário (novo login invalida sessão anterior).
-- Calendário com cadastro e edição de trabalhos por dia.
-- Relatórios salariais mensais.
-- Configuração de salário por local e tipo (`fixo` ou `diária`).
-- Bloco de notas integrado ao mesmo usuário.
+- Cadastro e login de usuários
+- Sessão única por usuário (novo login invalida sessão anterior)
+- Calendário com registro e edição de dias trabalhados
+- Configuração de salário por local e tipo (`fixo` ou `diária`)
+- Resumo salarial mensal
+- Bloco de notas por usuário
 
-## Experiência do Usuário
+## Estrutura
 
-- Interface responsiva para celular, tablet e desktop.
-- Navegação protegida por autenticação.
-- Redirecionamento automático para login quando a sessão expira.
-- Aviso em modal quando a sessão é invalidada por outro dispositivo.
+```text
+apps/
+  api/   # backend e regras de negócio
+  web/   # frontend
+packages/
+  ...    # pacotes compartilhados do monorepo
+```
 
-## Estrutura do Projeto
+## Pré-requisitos
 
-- `apps/web`: frontend da aplicação.
-- `apps/api`: backend e regras de negócio.
-- `packages/*`: pacotes compartilhados do monorepo.
+- Node.js 20+
+- pnpm 8+
 
-## Como Executar
+## Instalação
 
 ```bash
 pnpm install
+```
+
+## Execução em desenvolvimento
+
+```bash
 pnpm --filter api start:dev
 pnpm --filter web dev
 ```
 
-Frontend padrão: `http://localhost:5001`  
-API padrão: `http://localhost:5000`
+- API: `http://localhost:5000`
+- Web: `http://localhost:5001`
 
-## Qualidade
+## Variáveis de ambiente
 
-Comandos usados para validação local:
+- API: configure `DATABASE_URL` em `apps/api/.env`
+- Exemplo com SQLite:
 
-```bash
-pnpm --filter api lint
-pnpm --filter api build
-pnpm --filter web lint
-pnpm --filter web build
+```env
+DATABASE_URL="file:./prisma/dev.db"
 ```
 
-## Banco de Dados
+Mais detalhes de banco e provider no README da API: `apps/api/README.md`.
 
-- Configuração via `DATABASE_URL` no `apps/api/.env`.
-- Instruções de troca de provider no `README` da API.
+## Qualidade e validação
+
+```bash
+pnpm lint
+pnpm build
+pnpm --filter api test
+```
+
+## Scripts úteis
+
+```bash
+pnpm dev       # roda tarefas de desenvolvimento do monorepo
+pnpm lint      # lint em todos os projetos
+pnpm build     # build em todos os projetos
+pnpm format    # formata arquivos ts/tsx/md
+```
 
 ## Status
 
-Projeto em evolução contínua, com base funcional estável para uso real e preparação para publicação como portfólio.
+Base funcional estável para uso real e evolução contínua.

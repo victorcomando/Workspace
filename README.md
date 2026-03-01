@@ -17,6 +17,32 @@ Plataforma para gestão pessoal de rotina de trabalho, calendário, notas e fech
 - Resumo salarial mensal
 - Bloco de notas por usuário
 
+## Preview
+
+### Login
+
+![Login](https://i.imgur.com/wXpywM1.png)
+
+### Sessão invalidada
+
+![Sessão invalidada](https://i.imgur.com/QGBf7xm.png)
+
+### Dashboard (tema escuro)
+
+![Dashboard escuro](https://i.imgur.com/thBAPlK.png)
+
+### Calendário
+
+![Calendário](https://i.imgur.com/B4wq4hM.png)
+
+### Bloco de notas
+
+![Bloco de notas](https://i.imgur.com/2JzVi6c.png)
+
+### Mobile
+
+![Dashboard mobile](https://i.imgur.com/UNVS1he.png)
+
 ## Estrutura
 
 ```text

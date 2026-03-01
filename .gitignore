@@ -32,4 +32,3 @@ apps/api/test/
 .eslintrc.js
 apps/api/.gitignore
 apps/api/.prettierrc
-apps/web/.eslintrc.cjs

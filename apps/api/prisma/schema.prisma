@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model WorkDay {
+  id             Int          @id @default(autoincrement())
+  date           DateTime
+  jobName        String
+  worked         Boolean      @default(false)
+  obs            String?
+  ownerId        Int?
+  owner          User?        @relation(fields: [ownerId], references: [id])
+  salaryConfigId Int?
+  salaryConfig   SalaryConfig? @relation(fields: [salaryConfigId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("workdays")
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  pinned    Boolean  @default(false)
+  ownerId   Int?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notes")
+}
+
+model SalaryConfig {
+  id        Int      @id @default(autoincrement())
+  local     String
+  tipo      String
+  valor     Float
+  ownerId   Int?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  workDays  WorkDay[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("salary_config")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  passwordHash String
+  notes        Note[]
+  workDays     WorkDay[]
+  salaryConfig SalaryConfig[]
+  sessions     AuthSession[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("users")
+}
+
+model AuthSession {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("auth_sessions")
+}

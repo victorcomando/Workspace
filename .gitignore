@@ -1,0 +1,36 @@
+.DS_Store
+node_modules
+.turbo
+*.log
+dist
+dist-ssr
+*.local
+.env
+.cache
+server/dist
+public/dist
+.gemini/
+.docs/
+.services/
+.release-artifacts/
+
+# IDE - VSCode
+.vscode/*
+
+# local prisma scripts
+apps/api/prisma/*.sql
+apps/api/prisma/**/*.db
+
+# tests/playwright
+playwright.config.ts
+apps/web/e2e/
+apps/api/test/
+**/*.spec.ts
+**/*.e2e-spec.ts
+
+# dotfiles/config not tracked in repo
+.eslintrc.js
+apps/api/.gitignore
+apps/api/.prettierrc
+apps/web/.eslintrc.cjs
+packages/ui/.eslintrc.cjs

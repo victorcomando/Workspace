@@ -1,34 +1,34 @@
-name: Release Assets
+name: Release Build
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag da release (ex: v1.0.0)
+        description: 'Release tag (example: v1.0.0)'
         required: true
-        default: v1.0.0
+        default: 'v1.0.0'
 
 permissions:
   contents: write
 
 jobs:
   build-and-upload:
-    name: Build and Upload Assets
     runs-on: ubuntu-latest
 
     steps:
       - name: Resolve tag
         id: vars
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout
+      - name: Checkout tag
         uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ steps.vars.outputs.tag }}
@@ -60,7 +60,7 @@ jobs:
           tar -czf ".release-artifacts/workspace-api-${TAG}.tar.gz" -C apps/api dist
           tar -czf ".release-artifacts/workspace-web-${TAG}.tar.gz" -C apps/web dist
 
-      - name: Upload API artifact
+      - name: Upload API asset
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -69,7 +69,7 @@ jobs:
           tag: ${{ steps.vars.outputs.tag }}
           overwrite: true
 
-      - name: Upload Web artifact
+      - name: Upload Web asset
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}

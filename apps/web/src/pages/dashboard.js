@@ -1,8 +1,0 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DashboardPage = void 0;
-var jsx_runtime_1 = require("react/jsx-runtime");
-var DashboardPage = function () {
-    return ((0, jsx_runtime_1.jsxs)("section", { className: "dashboard-grid", children: [(0, jsx_runtime_1.jsx)("article", { className: "dashboard-card kpi", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #1" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card kpi", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #2" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card kpi", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #3" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card kpi", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #4" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card widget widget--wide", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #5" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card widget", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #6" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card widget", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #7" }) }), (0, jsx_runtime_1.jsx)("article", { className: "dashboard-card widget widget--wide", children: (0, jsx_runtime_1.jsx)("span", { className: "label", children: "Grid #8" }) })] }));
-};
-exports.DashboardPage = DashboardPage;

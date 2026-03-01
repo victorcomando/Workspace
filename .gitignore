@@ -33,4 +33,3 @@ apps/api/test/
 apps/api/.gitignore
 apps/api/.prettierrc
 apps/web/.eslintrc.cjs
-packages/ui/.eslintrc.cjs

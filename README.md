@@ -19,8 +19,12 @@ Plataforma para gestão pessoal de rotina de trabalho, calendário, notas e fech
 
 ## Preview
 
+<a href="https://i.imgur.com/thBAPlK.png" target="_blank" rel="noopener noreferrer">
+  <img src="https://i.imgur.com/thBAPlK.png" alt="Dashboard tema escuro" width="900" />
+</a>
+
 <details>
-  <summary>Ver screenshots (clique para expandir)</summary>
+  <summary>Outras capturas (clique para expandir)</summary>
 
   <p>
     <a href="https://i.imgur.com/wXpywM1.png" target="_blank" rel="noopener noreferrer">
@@ -31,12 +35,6 @@ Plataforma para gestão pessoal de rotina de trabalho, calendário, notas e fech
   <p>
     <a href="https://i.imgur.com/QGBf7xm.png" target="_blank" rel="noopener noreferrer">
       <img src="https://i.imgur.com/QGBf7xm.png" alt="Sessão invalidada" width="900" />
-    </a>
-  </p>
-
-  <p>
-    <a href="https://i.imgur.com/thBAPlK.png" target="_blank" rel="noopener noreferrer">
-      <img src="https://i.imgur.com/thBAPlK.png" alt="Dashboard tema escuro" width="900" />
     </a>
   </p>
 

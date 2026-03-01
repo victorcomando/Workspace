@@ -13,6 +13,12 @@ type SalaryConfigInput = {
   valor: number;
 };
 
+type SalaryConfigLike = {
+  local: string;
+  tipo: string;
+  valor: number;
+};
+
 @Injectable()
 export class SalaryService {
   constructor(private readonly prisma: PrismaService) {}
@@ -39,19 +45,6 @@ export class SalaryService {
     }
     const code = (error as { code?: unknown }).code;
     return typeof code === 'string' ? code : undefined;
-  }
-
-  private async findConfigByJobName(userId: number, jobName: string) {
-    const normalizedJob = this.normalizeText(jobName);
-    const configs = await this.prisma.salaryConfig.findMany({
-      where: { ownerId: userId },
-    });
-
-    return (
-      configs.find(
-        (config) => this.normalizeText(config.local) === normalizedJob,
-      ) ?? null
-    );
   }
 
   async findConfigs(userId: number) {
@@ -208,20 +201,44 @@ export class SalaryService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-    const workedDays = await this.prisma.workDay.findMany({
-      where: {
-        ownerId: userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
+    const [workedDays, salaryConfigs] = await Promise.all([
+      this.prisma.workDay.findMany({
+        where: {
+          ownerId: userId,
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
+          worked: true,
         },
-        worked: true,
-      },
-      include: {
-        salaryConfig: true,
-      },
-      orderBy: [{ date: 'asc' }, { id: 'asc' }],
-    });
+        include: {
+          salaryConfig: {
+            select: {
+              local: true,
+              tipo: true,
+              valor: true,
+            },
+          },
+        },
+        orderBy: [{ date: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.salaryConfig.findMany({
+        where: { ownerId: userId },
+        select: {
+          local: true,
+          tipo: true,
+          valor: true,
+        },
+      }),
+    ]);
+
+    const configsByLocal = new Map<string, SalaryConfigLike>();
+    for (const config of salaryConfigs) {
+      const key = this.normalizeText(config.local);
+      if (!configsByLocal.has(key)) {
+        configsByLocal.set(key, config);
+      }
+    }
 
     let totalDailyEarnings = 0;
     const fixedByLocal = new Map<string, number>();
@@ -238,7 +255,7 @@ export class SalaryService {
     for (const workday of workedDays) {
       const config =
         workday.salaryConfig ??
-        (await this.findConfigByJobName(userId, workday.jobName));
+        configsByLocal.get(this.normalizeText(workday.jobName));
 
       if (!config) {
         unmatchedJobs.add(workday.jobName);

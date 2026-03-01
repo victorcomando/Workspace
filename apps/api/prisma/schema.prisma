@@ -19,8 +19,8 @@ model WorkDay {
   jobName        String
   worked         Boolean      @default(false)
   obs            String?
-  ownerId        Int?
-  owner          User?        @relation(fields: [ownerId], references: [id])
+  ownerId        Int
+  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   salaryConfigId Int?
   salaryConfig   SalaryConfig? @relation(fields: [salaryConfigId], references: [id])
   createdAt      DateTime     @default(now())
@@ -34,8 +34,8 @@ model Note {
   title     String
   content   String?
   pinned    Boolean  @default(false)
-  ownerId   Int?
-  owner     User?    @relation(fields: [ownerId], references: [id])
+  ownerId   Int
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -47,8 +47,8 @@ model SalaryConfig {
   local     String
   tipo      String
   valor     Float
-  ownerId   Int?
-  owner     User?    @relation(fields: [ownerId], references: [id])
+  ownerId   Int
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   workDays  WorkDay[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

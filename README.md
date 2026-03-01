@@ -95,7 +95,7 @@ pnpm install
 pnpm start
 ```
 
-Observação: em release oficial, o artefato já inclui `dist` da API e Web.
+Observação: em release oficial, o artefato já inclui `dist` da API e Web. Veja em [release](https://github.com/victorcomando/Workspace/releases).
 
 ## Variáveis de ambiente
 
@@ -106,7 +106,7 @@ Observação: em release oficial, o artefato já inclui `dist` da API e Web.
 DATABASE_URL="file:./prisma/dev.db"
 ```
 
-Mais detalhes de banco e provider no README da API: `apps/api/README.md`.
+Mais detalhes de banco e provider no [README da API](apps/api/README.md).
 
 ## Qualidade e validação
 

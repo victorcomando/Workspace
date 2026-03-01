@@ -1146,6 +1146,46 @@ body {
   margin: 0;
 }
 
+.reports-work-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.reports-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--text-primary);
+}
+
+.reports-job-select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: var(--space-2xs) var(--space-xs);
+}
+
+.reports-export-box {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.reports-export-textarea {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: var(--space-sm);
+  resize: vertical;
+  font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+  line-height: 1.45;
+}
+
 .reports-configs-header {
   display: flex;
   justify-content: space-between;
@@ -1239,6 +1279,10 @@ body {
 
   .reports-month-nav strong {
     font-size: 0.9rem;
+  }
+
+  .reports-work-controls .pager-btn {
+    width: 100%;
   }
 }
 

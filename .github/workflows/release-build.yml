@@ -74,9 +74,6 @@ jobs:
             - Melhorias de performance no build web com split de chunks.
             - Padronização de feedbacks de interface usando toast.
             - Remoção da aba "Em construção" nas páginas de Relatórios e Configurações.
-
-            Artifact:
-            - workspace-${{ github.ref_name }}.tar.gz
           draft: false
           prerelease: false
           make_latest: true

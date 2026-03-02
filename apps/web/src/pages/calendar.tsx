@@ -5,7 +5,6 @@ import {
   CFormInput,
   CFormSelect,
   CFormTextarea,
-  CModal,
   CModalBody,
   CModalFooter,
   CModalHeader,
@@ -13,7 +12,9 @@ import {
 } from "@coreui/react";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import { useAppToast } from "../hooks/use-app-toast.tsx";
+import { AppModal } from "../components/app-modal.tsx";
 
 type Workday = {
   id: number;
@@ -46,6 +47,7 @@ const WEEKDAY_LABELS = [
 const SIX_ROWS_SLOTS = 42;
 
 export const CalendarPage = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Workday[]>([]);
   const [visibleDate, setVisibleDate] = useState(() => {
     const now = new Date();
@@ -238,6 +240,23 @@ export const CalendarPage = () => {
     }
   };
 
+  const goToSalaryConfig = () => {
+    const trimmedJobName = jobName.trim();
+    if (!trimmedJobName) {
+      showToast("Informe o nome do trabalho para configurar salário.", {
+        title: "Calendário",
+        color: "warning",
+      });
+      return;
+    }
+
+    const query = new URLSearchParams({
+      job: trimmedJobName,
+      from: "/calendar",
+    });
+    navigate(`/config?${query.toString()}`);
+  };
+
   const monthLabel = format(visibleDate, "MMMM yyyy", { locale: ptBR });
 
   return (
@@ -323,8 +342,7 @@ export const CalendarPage = () => {
         </div>
       </div>
 
-      <CModal
-        className="calendar-modal"
+      <AppModal
         alignment="center"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -395,6 +413,11 @@ export const CalendarPage = () => {
 
         </CModalBody>
         <CModalFooter>
+          {selectedDateJobs.length > 0 && (
+            <CButton color="secondary" variant="outline" onClick={goToSalaryConfig} disabled={saving}>
+              Configurar salário deste trabalho
+            </CButton>
+          )}
           {selectedJobId !== "new" && (
             <CButton
               color="danger"
@@ -410,7 +433,7 @@ export const CalendarPage = () => {
           </CButton>
         </CModalFooter>
 
-        <CModal className="calendar-modal" alignment="center" visible={confirmVisible} onClose={() => setConfirmVisible(false)}>
+        <AppModal alignment="center" visible={confirmVisible} onClose={() => setConfirmVisible(false)}>
           <CModalHeader>
             <CModalTitle>Confirmar exclusão</CModalTitle>
           </CModalHeader>
@@ -419,8 +442,8 @@ export const CalendarPage = () => {
             <CButton color="secondary" variant="outline" onClick={() => setConfirmVisible(false)}>Cancelar</CButton>
             <CButton color="danger" onClick={() => { setConfirmVisible(false); deleteWorkday(); }} disabled={saving}>Excluir</CButton>
           </CModalFooter>
-        </CModal>
-      </CModal>
+        </AppModal>
+      </AppModal>
       {toaster}
     </section>
   );

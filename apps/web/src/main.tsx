@@ -4,7 +4,6 @@ import CIcon from "@coreui/icons-react";
 import "@coreui/coreui/dist/css/coreui.min.css";
 import {
   CButton,
-  CModal,
   CModalBody,
   CModalFooter,
   CModalHeader,
@@ -39,6 +38,7 @@ import { SettingsPage } from "./pages/settings.tsx";
 import { NotFoundPage } from "./pages/not-found.tsx";
 import { NotesPage } from "./pages/notes.tsx";
 import { useAppToast } from "./hooks/use-app-toast.tsx";
+import { AppModal } from "./components/app-modal.tsx";
 
 type AuthUser = {
   id: number;
@@ -128,8 +128,7 @@ const AuthPage = ({
 
   return (
     <div className="auth-screen">
-      <CModal
-        className="calendar-modal"
+      <AppModal
         alignment="center"
         backdrop="static"
         visible={showSessionInvalidatedNotice}
@@ -146,7 +145,7 @@ const AuthPage = ({
             Entendi
           </CButton>
         </CModalFooter>
-      </CModal>
+      </AppModal>
       <div className="auth-card">
         <h1>Workspace</h1>
         <p>Entre ou registre-se para continuar.</p>
@@ -229,10 +228,22 @@ const AppLayout = ({
   onLogout,
 }: AppLayoutProps) => {
   const location = useLocation();
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname, setSidebarOpen]);
+
+  const handleConfirmLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await onLogout();
+    } finally {
+      setLogoutLoading(false);
+      setConfirmLogoutVisible(false);
+    }
+  };
 
   return (
     <div className="layout">
@@ -290,7 +301,13 @@ const AppLayout = ({
         </div>
 
         <div className="header__left">
-          <button className="theme-toggle" type="button" onClick={() => void onLogout()} aria-label="Sair" title="Sair">
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={() => setConfirmLogoutVisible(true)}
+            aria-label="Sair"
+            title="Sair"
+          >
             <CIcon icon={cilAccountLogout} />
           </button>
           <button
@@ -308,6 +325,35 @@ const AppLayout = ({
       <main className="content">
         <Outlet />
       </main>
+
+      <AppModal
+        alignment="center"
+        visible={confirmLogoutVisible}
+        onClose={() => setConfirmLogoutVisible(false)}
+      >
+        <CModalHeader>
+          <CModalTitle>Confirmar saída</CModalTitle>
+        </CModalHeader>
+        <CModalBody>Tem certeza que deseja sair?</CModalBody>
+        <CModalFooter>
+          <button
+            type="button"
+            className="pager-btn"
+            onClick={() => setConfirmLogoutVisible(false)}
+            disabled={logoutLoading}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="pager-btn btn-danger-outline"
+            onClick={() => void handleConfirmLogout()}
+            disabled={logoutLoading}
+          >
+            {logoutLoading ? "Saindo..." : "Sair"}
+          </button>
+        </CModalFooter>
+      </AppModal>
     </div>
   );
 };

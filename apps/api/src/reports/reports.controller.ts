@@ -21,13 +21,17 @@ export class ReportsController {
     @Query('month', ParseIntPipe) month: number,
     @Query('year', ParseIntPipe) year: number,
     @Query('job') job = 'all',
+    @Query('exportType') exportType = 'message',
     @Query('includeValues') includeValues?: string,
+    @Query('workedOnly') workedOnly?: string,
   ) {
     return this.reportsService.getWorkExport(user.id, {
       month,
       year,
       job,
+      exportType,
       includeValues,
+      workedOnly,
     });
   }
 }

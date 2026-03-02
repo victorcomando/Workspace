@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { CModalBody, CModalFooter, CModalHeader, CModalTitle } from '@coreui/react';
+import { AppModal } from '../components/app-modal.tsx';
 import { useAppToast } from '../hooks/use-app-toast.tsx';
 
 type SalarySummary = {
@@ -25,12 +27,16 @@ type WorkExportResponse = {
   message: string;
 };
 
+type ExportType = 'message';
+
 const numberFormatter = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
 const formatMoney = (value: number) => numberFormatter.format(value);
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
 export const ReportsPage = () => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -41,9 +47,12 @@ export const ReportsPage = () => {
 
   const [workdays, setWorkdays] = useState<Workday[]>([]);
   const [workLoading, setWorkLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportType, setExportType] = useState<ExportType>('message');
   const [includeValues, setIncludeValues] = useState(false);
+  const [workedOnly, setWorkedOnly] = useState(false);
   const [selectedJob, setSelectedJob] = useState('all');
-  const [workMessage, setWorkMessage] = useState('');
+  const [exportModalVisible, setExportModalVisible] = useState(false);
   const { showToast, toaster } = useAppToast();
 
   const fetchSalarySummary = async (targetMonth: number, targetYear: number) => {
@@ -104,6 +113,13 @@ export const ReportsPage = () => {
     return uniqueJobs.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
   }, [workdays]);
 
+  const filteredWorkdays = useMemo(() => {
+    const selectedJobName = selectedJob === 'all' ? null : selectedJob;
+    return [...workdays]
+      .filter((item) => (selectedJobName ? item.jobName === selectedJobName : true))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [workdays, selectedJob]);
+
   useEffect(() => {
     if (selectedJob === 'all') {
       return;
@@ -132,31 +148,8 @@ export const ReportsPage = () => {
     }
   };
 
-  const generateWorkMessage = async () => {
-    setWorkLoading(true);
-
-    try {
-      const response = await fetch(
-        `/api/v1/reports/work-export?month=${month}&year=${year}&job=${encodeURIComponent(selectedJob)}&includeValues=${includeValues ? 'true' : 'false'}`,
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const payload: WorkExportResponse = await response.json();
-      setWorkMessage(payload.message ?? '');
-    } catch (error) {
-      setWorkMessage('');
-      showToast(error instanceof Error ? error.message : 'Erro desconhecido', {
-        title: 'Relatórios',
-        color: 'danger',
-      });
-    } finally {
-      setWorkLoading(false);
-    }
-  };
-
-  const copyWorkMessage = async () => {
-    if (!workMessage.trim()) {
+  const copyToClipboard = async (text: string) => {
+    if (!text.trim()) {
       showToast('Nada para copiar.', {
         title: 'Relatórios',
         color: 'warning',
@@ -166,13 +159,13 @@ export const ReportsPage = () => {
 
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(workMessage);
-        showToast('Mensagem copiada.', { title: 'Relatórios', color: 'success' });
+        await navigator.clipboard.writeText(text);
+        showToast('Exportação copiada.', { title: 'Relatórios', color: 'success' });
         return;
       }
 
       const textarea = document.createElement('textarea');
-      textarea.value = workMessage;
+      textarea.value = text;
       textarea.setAttribute('readonly', '');
       textarea.style.position = 'fixed';
       textarea.style.left = '-9999px';
@@ -186,12 +179,41 @@ export const ReportsPage = () => {
         throw new Error('Falha ao copiar');
       }
 
-      showToast('Mensagem copiada.', { title: 'Relatórios', color: 'success' });
+      showToast('Exportação copiada.', { title: 'Relatórios', color: 'success' });
     } catch {
-      showToast('Falha ao copiar. Copie manualmente a caixa de texto.', {
+      showToast('Falha ao copiar exportação.', {
         title: 'Relatórios',
         color: 'danger',
       });
+    }
+  };
+
+  const handleExport = async () => {
+    if (exportType !== 'message') {
+      showToast('Tipo de exportação não suportado.', {
+        title: 'Relatórios',
+        color: 'warning',
+      });
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const response = await fetch(
+        `/api/v1/reports/work-export?month=${month}&year=${year}&job=${encodeURIComponent(selectedJob)}&exportType=${exportType}&includeValues=${includeValues ? 'true' : 'false'}&workedOnly=${workedOnly ? 'true' : 'false'}`,
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const payload: WorkExportResponse = await response.json();
+      await copyToClipboard(payload.message ?? '');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Erro desconhecido', {
+        title: 'Relatórios',
+        color: 'danger',
+      });
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -284,10 +306,90 @@ export const ReportsPage = () => {
       )}
 
       {activeTab === 'work' && (
-        <article className="reports-card">
-          <h3>Exportar Trabalhos</h3>
+        <article className="reports-card reports-card--configs">
           <div className="reports-work-controls">
             <label className="reports-check">
+              <select
+                className="reports-job-select"
+                value={selectedJob}
+                onChange={(event) => setSelectedJob(event.target.value)}
+                aria-label="Filtrar por emprego"
+              >
+                <option value="all">Todos</option>
+                {availableJobs.map((job) => (
+                  <option key={job} value={job}>
+                    {job}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="pager-btn btn-brand"
+              onClick={() => setExportModalVisible(true)}
+              disabled={workLoading}
+            >
+              Exportar
+            </button>
+          </div>
+
+          {workLoading && <p className="notes-state">Carregando trabalhos...</p>}
+
+          {!workLoading && filteredWorkdays.length === 0 && (
+            <p className="notes-state">Nenhum trabalho encontrado para o filtro selecionado.</p>
+          )}
+
+          {!workLoading && filteredWorkdays.length > 0 && (
+            <div className="reports-table-wrap">
+              <table className="reports-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Trabalho</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredWorkdays.map((item) => (
+                    <tr key={item.id}>
+                      <td>{formatDate(item.date)}</td>
+                      <td>{item.jobName}</td>
+                      <td>
+                        <span
+                          className={`reports-status-chip ${
+                            item.worked ? 'is-worked' : 'is-pending'
+                          }`}
+                        >
+                          {item.worked ? 'Trabalhado' : 'Pendente'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+      )}
+
+      {activeTab === 'coming' && (
+        <article className="reports-card">
+          <h3>Aba em construção</h3>
+          <p className="notes-state">Esta seção será implementada em breve.</p>
+        </article>
+      )}
+
+      <AppModal
+        alignment="center"
+        visible={exportModalVisible}
+        onClose={() => setExportModalVisible(false)}
+      >
+        <CModalHeader>
+          <CModalTitle>Configurações de exportação</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="reports-export-options">
+            <label className="reports-field">
               <span>Emprego</span>
               <select
                 className="reports-job-select"
@@ -302,46 +404,49 @@ export const ReportsPage = () => {
                 ))}
               </select>
             </label>
-            <label className="reports-check">
+            <label className="reports-field">
+              <span>Tipo de exportação</span>
+              <select
+                className="reports-job-select"
+                value={exportType}
+                onChange={(event) => setExportType(event.target.value as ExportType)}
+              >
+                <option value="message">Mensagem</option>
+              </select>
+            </label>
+            <label className="reports-check reports-check--modal">
+              <input
+                type="checkbox"
+                checked={workedOnly}
+                onChange={(event) => setWorkedOnly(event.target.checked)}
+              />
+              <span>Somente dias trabalhados</span>
+            </label>
+            <label className="reports-check reports-check--modal">
               <input
                 type="checkbox"
                 checked={includeValues}
                 onChange={(event) => setIncludeValues(event.target.checked)}
               />
-              <span>Exportar com valores</span>
+              <span>Com valores</span>
             </label>
-            <button
-              type="button"
-              className="pager-btn btn-brand"
-              onClick={() => void generateWorkMessage()}
-            >
-              Gerar mensagem
-            </button>
-            <button type="button" className="pager-btn" onClick={() => void copyWorkMessage()}>
-              Copiar
-            </button>
           </div>
-
-          {workLoading && <p className="notes-state">Carregando trabalhos...</p>}
-          {!workLoading && (
-            <div className="reports-export-box">
-              <textarea
-                className="reports-export-textarea"
-                value={workMessage}
-                onChange={(event) => setWorkMessage(event.target.value)}
-                placeholder="Clique em 'Gerar mensagem' para montar o relatório do mês."
-              />
-            </div>
-          )}
-        </article>
-      )}
-
-      {activeTab === 'coming' && (
-        <article className="reports-card">
-          <h3>Aba em construção</h3>
-          <p className="notes-state">Esta seção será implementada em breve.</p>
-        </article>
-      )}
+          {exportLoading && <p className="notes-state">Gerando exportação...</p>}
+        </CModalBody>
+        <CModalFooter>
+          <button type="button" className="pager-btn" onClick={() => setExportModalVisible(false)}>
+            Fechar
+          </button>
+          <button
+            type="button"
+            className="pager-btn btn-brand"
+            onClick={() => void handleExport()}
+            disabled={exportLoading}
+          >
+            Exportar
+          </button>
+        </CModalFooter>
+      </AppModal>
       {toaster}
     </section>
   );

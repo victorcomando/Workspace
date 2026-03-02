@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
+  CFormCheck,
   CFormInput,
   CFormSelect,
-  CModal,
   CModalBody,
   CModalFooter,
   CModalHeader,
   CModalTitle,
 } from '@coreui/react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppToast } from '../hooks/use-app-toast.tsx';
+import { AppModal } from '../components/app-modal.tsx';
 
 type SalaryConfig = {
   id: number;
@@ -25,19 +27,28 @@ const numberFormatter = new Intl.NumberFormat('pt-BR', {
 const formatMoney = (value: number) => numberFormatter.format(value);
 
 export const SettingsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [configs, setConfigs] = useState<SalaryConfig[]>([]);
+  const [configsReady, setConfigsReady] = useState(false);
   const [knownLocals, setKnownLocals] = useState<string[]>([]);
   const [configLoading, setConfigLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'salary' | 'coming'>('salary');
 
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deepLinkJob, setDeepLinkJob] = useState<string | null>(null);
   const [local, setLocal] = useState('');
-  const [selectedLocal, setSelectedLocal] = useState('');
-  const [customLocal, setCustomLocal] = useState(false);
   const [tipo, setTipo] = useState<'diaria' | 'fixo'>('diaria');
   const [valor, setValor] = useState('');
   const { showToast, toaster } = useAppToast();
+
+  const normalizeText = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
 
   const fetchConfigs = async () => {
     setConfigLoading(true);
@@ -55,6 +66,7 @@ export const SettingsPage = () => {
       });
     } finally {
       setConfigLoading(false);
+      setConfigsReady(true);
     }
   };
 
@@ -66,9 +78,6 @@ export const SettingsPage = () => {
       }
       const data: string[] = await response.json();
       setKnownLocals(data);
-      if (!customLocal && !selectedLocal && data.length > 0) {
-        setSelectedLocal(data[0]);
-      }
     } catch {
       setKnownLocals([]);
     }
@@ -79,18 +88,37 @@ export const SettingsPage = () => {
     void fetchKnownLocals();
   }, []);
 
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const hasDeepLinkParams = query.has('job') || query.has('from');
+    if (!hasDeepLinkParams) {
+      return;
+    }
+
+    const job = query.get('job')?.trim() ?? '';
+    setDeepLinkJob(job || null);
+
+    query.delete('job');
+    query.delete('from');
+    const cleanSearch = query.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: cleanSearch ? `?${cleanSearch}` : '',
+      },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate]);
+
   const resetForm = () => {
     setEditingId(null);
-    setLocal('');
-    setCustomLocal(false);
-    setSelectedLocal(knownLocals[0] ?? '');
+    setLocal(knownLocals[0] ?? '');
     setTipo('diaria');
     setValor('');
   };
 
   const saveConfig = async () => {
-    const localFromSelection = customLocal ? local : selectedLocal;
-    const trimmedLocal = localFromSelection.trim();
+    const trimmedLocal = local.trim();
     const numericValor = Number(valor);
 
     if (!trimmedLocal) {
@@ -184,18 +212,7 @@ export const SettingsPage = () => {
 
   const startEdit = (config: SalaryConfig) => {
     setEditingId(config.id);
-    const existsInList = knownLocals.some(
-      (name) => name.toLowerCase() === config.local.toLowerCase(),
-    );
-    if (existsInList) {
-      setCustomLocal(false);
-      setSelectedLocal(config.local);
-      setLocal('');
-    } else {
-      setCustomLocal(true);
-      setSelectedLocal('');
-      setLocal(config.local);
-    }
+    setLocal(config.local);
     setTipo(config.tipo === 'fixo' ? 'fixo' : 'diaria');
     setValor(String(config.valor));
     setModalVisible(true);
@@ -205,6 +222,39 @@ export const SettingsPage = () => {
     resetForm();
     setModalVisible(true);
   };
+
+  useEffect(() => {
+    if (!deepLinkJob) {
+      return;
+    }
+    if (!configsReady) {
+      return;
+    }
+
+    const existing = configs.find(
+      (config) => normalizeText(config.local) === normalizeText(deepLinkJob),
+    );
+
+    if (existing) {
+      setEditingId(existing.id);
+      setLocal(existing.local);
+      setTipo(existing.tipo === 'fixo' ? 'fixo' : 'diaria');
+      setValor(String(existing.valor));
+      setModalVisible(true);
+    } else {
+      setEditingId(null);
+      setLocal(deepLinkJob);
+      setTipo('diaria');
+      setValor('');
+      setModalVisible(true);
+    }
+
+    setDeepLinkJob(null);
+  }, [deepLinkJob, configs, configsReady]);
+
+  const localOptions = local && !knownLocals.some((name) => name === local)
+    ? [local, ...knownLocals]
+    : knownLocals;
 
   return (
     <section className="page-shell reports-page">
@@ -235,9 +285,11 @@ export const SettingsPage = () => {
         <article className="reports-card reports-card--configs">
           <div className="reports-configs-header">
             <h3>Configurações de Salário</h3>
-            <button type="button" className="pager-btn btn-brand" onClick={startCreate}>
-              Nova configuração
-            </button>
+            <div className="reports-configs-actions">
+              <button type="button" className="pager-btn btn-brand" onClick={startCreate}>
+                Nova configuração
+              </button>
+            </div>
           </div>
 
           {configLoading && <p className="notes-state">Carregando configurações...</p>}
@@ -291,8 +343,7 @@ export const SettingsPage = () => {
         </article>
       )}
 
-      <CModal
-        className="calendar-modal"
+      <AppModal
         alignment="center"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -307,48 +358,31 @@ export const SettingsPage = () => {
             <label htmlFor="salary-local-select">Local/Trabalho</label>
             <CFormSelect
               id="salary-local-select"
-              value={customLocal ? '__custom__' : selectedLocal}
-              onChange={(event) => {
-                const value = event.target.value;
-                if (value === '__custom__') {
-                  setCustomLocal(true);
-                  setSelectedLocal('');
-                } else {
-                  setCustomLocal(false);
-                  setSelectedLocal(value);
-                }
-              }}
+              value={local}
+              onChange={(event) => setLocal(event.target.value)}
               options={[
                 { value: '', label: 'Selecione local/trabalho' },
-                ...knownLocals.map((name) => ({ value: name, label: name })),
-                { value: '__custom__', label: 'Outro (digitar manualmente)' },
+                ...localOptions.map((name) => ({ value: name, label: name })),
               ]}
             />
           </div>
 
-          {customLocal && (
-            <div className="modal-field">
-              <label htmlFor="salary-local-custom">Local/Trabalho (manual)</label>
-              <CFormInput
-                id="salary-local-custom"
-                value={local}
-                onChange={(event) => setLocal(event.target.value)}
-                placeholder="Ex: Complexo Atitude"
-              />
-            </div>
-          )}
-
           <div className="modal-field">
             <label htmlFor="salary-tipo">Tipo</label>
-            <CFormSelect
-              id="salary-tipo"
-              value={tipo}
-              onChange={(event) => setTipo(event.target.value as 'diaria' | 'fixo')}
-              options={[
-                { value: 'diaria', label: 'Diária' },
-                { value: 'fixo', label: 'Fixo' },
-              ]}
-            />
+            <div className="salary-type-checks" id="salary-tipo">
+              <CFormCheck
+                id="salary-tipo-diaria"
+                label="Diária"
+                checked={tipo === 'diaria'}
+                onChange={() => setTipo('diaria')}
+              />
+              <CFormCheck
+                id="salary-tipo-fixo"
+                label="Fixo"
+                checked={tipo === 'fixo'}
+                onChange={() => setTipo('fixo')}
+              />
+            </div>
           </div>
 
           <div className="modal-field">
@@ -372,7 +406,7 @@ export const SettingsPage = () => {
             {editingId ? 'Salvar edição' : 'Adicionar'}
           </button>
         </CModalFooter>
-      </CModal>
+      </AppModal>
       {toaster}
     </section>
   );

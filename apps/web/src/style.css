@@ -520,59 +520,59 @@ body {
   color: var(--text-muted);
 }
 
-.modal-error {
-  margin: 10px 0 0;
-  color: #dc2626;
-  font-size: 0.9rem;
+.salary-type-checks {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
-.calendar-modal .modal-content {
+.app-modal .modal-content {
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--border);
 }
 
-.calendar-modal .modal-header,
-.calendar-modal .modal-footer {
+.app-modal .modal-header,
+.app-modal .modal-footer {
   border-color: var(--border);
 }
 
-.calendar-modal .form-control,
-.calendar-modal .form-select {
+.app-modal .form-control,
+.app-modal .form-select {
   background: var(--bg-page);
   color: var(--text-primary);
   border-color: var(--border);
 }
 
-.calendar-modal .form-control::placeholder {
+.app-modal .form-control::placeholder {
   color: var(--text-muted);
   opacity: 0.9;
 }
 
-.calendar-modal .form-control:focus,
-.calendar-modal .form-select:focus {
+.app-modal .form-control:focus,
+.app-modal .form-select:focus {
   background: var(--bg-page);
   color: var(--text-primary);
   border-color: color-mix(in srgb, var(--status) 40%, var(--border) 60%);
   box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--status) 20%, transparent 80%);
 }
 
-.calendar-modal .form-check-label {
+.app-modal .form-check-label {
   color: var(--text-primary);
 }
 
-.calendar-modal .btn-primary {
+.app-modal .btn-primary {
   background: var(--brand);
   border-color: var(--brand);
 }
 
-.calendar-modal .btn-primary:hover,
-.calendar-modal .btn-primary:focus-visible {
+.app-modal .btn-primary:hover,
+.app-modal .btn-primary:focus-visible {
   background: var(--brand-strong);
   border-color: var(--brand-strong);
 }
 
-.calendar-modal .btn-primary:disabled {
+.app-modal .btn-primary:disabled {
   background: color-mix(in srgb, var(--brand) 62%, var(--bg-page) 38%);
   border-color: color-mix(in srgb, var(--brand) 62%, var(--bg-page) 38%);
 }
@@ -1153,11 +1153,23 @@ body {
   flex-wrap: wrap;
 }
 
+.reports-quick-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .reports-check {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
   color: var(--text-primary);
+}
+
+.reports-check--modal {
+  margin-bottom: var(--space-xs);
 }
 
 .reports-job-select {
@@ -1171,6 +1183,24 @@ body {
 .reports-export-box {
   display: grid;
   gap: var(--space-xs);
+}
+
+.reports-export-options {
+  display: grid;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.reports-field {
+  display: grid;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.reports-field span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .reports-export-textarea {
@@ -1190,6 +1220,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.reports-configs-actions {
+  display: flex;
   gap: var(--space-xs);
   flex-wrap: wrap;
 }
@@ -1243,6 +1279,29 @@ body {
 .reports-table td.is-right .pager-btn {
   margin-left: var(--space-xs);
   padding: var(--space-2xs) var(--space-sm);
+}
+
+.reports-status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+}
+
+.reports-status-chip.is-worked {
+  color: #0f5132;
+  background: #d1e7dd;
+  border-color: #badbcc;
+}
+
+.reports-status-chip.is-pending {
+  color: #664d03;
+  background: #fff3cd;
+  border-color: #ffecb5;
 }
 
 @media (max-width: 1100px) {

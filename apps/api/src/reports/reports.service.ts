@@ -53,6 +53,22 @@ export class ReportsService {
     return normalized === '1' || normalized === 'true';
   }
 
+  private parseWorkedOnly(raw?: string) {
+    if (!raw) {
+      return false;
+    }
+    const normalized = raw.trim().toLowerCase();
+    return normalized === '1' || normalized === 'true';
+  }
+
+  private validateExportType(raw?: string) {
+    const exportType = raw?.trim().toLowerCase() || 'message';
+    if (exportType !== 'message') {
+      throw new BadRequestException("exportType deve ser 'message'");
+    }
+    return exportType;
+  }
+
   private formatMoney(value: number) {
     return this.moneyFormatter.format(value);
   }
@@ -67,7 +83,9 @@ export class ReportsService {
       month: number;
       year: number;
       job?: string;
+      exportType?: string;
       includeValues?: string;
+      workedOnly?: string;
     },
   ) {
     const { month, year } = params;
@@ -80,7 +98,9 @@ export class ReportsService {
 
     const normalizedJob = params.job?.trim() || 'all';
     const selectedJobName = normalizedJob === 'all' ? null : normalizedJob;
+    this.validateExportType(params.exportType);
     const includeValues = this.parseIncludeValues(params.includeValues);
+    const workedOnly = this.parseWorkedOnly(params.workedOnly);
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
@@ -92,6 +112,7 @@ export class ReportsService {
             gte: startDate,
             lte: endDate,
           },
+          ...(workedOnly ? { worked: true } : {}),
           ...(selectedJobName ? { jobName: selectedJobName } : {}),
         },
         select: {
@@ -113,10 +134,13 @@ export class ReportsService {
     ]);
 
     if (workdays.length === 0) {
+      const emptyReason = workedOnly
+        ? 'Nenhum dia trabalhado encontrado para este filtro.'
+        : selectedJobName
+          ? `Nenhum trabalho registrado para ${selectedJobName}.`
+          : 'Nenhum trabalho registrado neste mês.';
       return {
-        message: selectedJobName
-          ? `Relatório de trabalhos - ${this.monthNames[month - 1]}/${year}\n\nNenhum trabalho registrado para ${selectedJobName}.`
-          : `Relatório de trabalhos - ${this.monthNames[month - 1]}/${year}\n\nNenhum trabalho registrado neste mês.`,
+        message: `Relatório de trabalhos - ${this.monthNames[month - 1]}/${year}\n\n${emptyReason}`,
       };
     }
 
@@ -177,7 +201,9 @@ export class ReportsService {
         includeValues && selectedConfig
           ? `${selectedJobName} (R$ ${this.formatMoney(selectedValor)})`
           : selectedJobName;
-      const totalsLine = `Total de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`;
+      const totalsLine = workedOnly
+        ? `Dias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`
+        : `Total de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`;
 
       return {
         message: `${headerWithValue}\n${lines.join('\n')}\n\n${totalsLine}`,
@@ -216,7 +242,9 @@ export class ReportsService {
         .join('\n');
 
       groupedSections.push(
-        `${header}\n${jobLines}\n\nTotal de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`,
+        workedOnly
+          ? `${header}\n${jobLines}\n\nDias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`
+          : `${header}\n${jobLines}\n\nTotal de trabalhos: ${totalCount} | Dias trabalhados: ${workedCount} | Total a receber: R$ ${this.formatMoney(totalToReceive)}`,
       );
     }
 

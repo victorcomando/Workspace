@@ -1,6 +1,6 @@
 {
   "name": "workspace-monorepo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Monorepo da plataforma Workspace (API NestJS + Web React).",
   "private": true,
   "author": "Victor Comando",

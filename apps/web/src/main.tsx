@@ -50,6 +50,14 @@ type AuthResponse = {
   user: AuthUser;
 };
 
+type MetaVersionResponse = {
+  version?: string;
+  source?: string;
+  latestVersion?: string | null;
+  hasUpdate?: boolean;
+  releaseUrl?: string | null;
+};
+
 type AuthPageProps = {
   authMode: "login" | "register";
   authEmail: string;
@@ -65,6 +73,10 @@ type AuthPageProps = {
 
 type AppLayoutProps = {
   authUser: AuthUser;
+  appVersion: string;
+  latestVersion: string | null;
+  hasUpdate: boolean;
+  releaseUrl: string | null;
   theme: "light" | "dark";
   isMobile: boolean;
   sidebarOpen: boolean;
@@ -220,6 +232,10 @@ const AuthPage = ({
 
 const AppLayout = ({
   authUser,
+  appVersion,
+  latestVersion,
+  hasUpdate,
+  releaseUrl,
   theme,
   isMobile,
   sidebarOpen,
@@ -272,6 +288,17 @@ const AppLayout = ({
             <CIcon icon={cilSettings} className="app-sidebar__icon" />
             Configurações
           </NavLink>
+          <div className="app-sidebar__version">v{appVersion}</div>
+          {hasUpdate && latestVersion && releaseUrl && (
+            <a
+              className="app-sidebar__update-link"
+              href={releaseUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Nova versão disponível: v{latestVersion}
+            </a>
+          )}
         </div>
       </aside>
 
@@ -361,6 +388,10 @@ const AppLayout = ({
 const AppRouter = ({
   authReady,
   authUser,
+  appVersion,
+  latestVersion,
+  hasUpdate,
+  releaseUrl,
   authMode,
   authEmail,
   authPassword,
@@ -378,6 +409,10 @@ const AppRouter = ({
 }: {
   authReady: boolean;
   authUser: AuthUser | null;
+  appVersion: string;
+  latestVersion: string | null;
+  hasUpdate: boolean;
+  releaseUrl: string | null;
   authMode: "login" | "register";
   authEmail: string;
   authPassword: string;
@@ -473,6 +508,10 @@ const AppRouter = ({
           authUser ? (
             <AppLayout
               authUser={authUser}
+              appVersion={appVersion}
+              latestVersion={latestVersion}
+              hasUpdate={hasUpdate}
+              releaseUrl={releaseUrl}
               theme={theme}
               isMobile={isMobile}
               sidebarOpen={sidebarOpen}
@@ -508,6 +547,10 @@ const App = () => {
   const [authToken, setAuthToken] = useState<string | null>(() =>
     localStorage.getItem("auth_token"),
   );
+  const [appVersion, setAppVersion] = useState("dev");
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [hasUpdate, setHasUpdate] = useState(false);
+  const [releaseUrl, setReleaseUrl] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -653,6 +696,48 @@ const App = () => {
   }, [authToken, revalidateSession]);
 
   useEffect(() => {
+    let cancelled = false;
+    let retryTimer: number | null = null;
+
+    const loadVersion = async (attempt: number) => {
+      try {
+        const response = await fetch("/api/v1/meta/version", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("version_endpoint_unavailable");
+        }
+        const payload = (await response.json()) as MetaVersionResponse;
+        const version = payload.version?.trim();
+        if (version) {
+          setAppVersion(version);
+        }
+        setLatestVersion(payload.latestVersion?.trim() || null);
+        setHasUpdate(Boolean(payload.hasUpdate));
+        setReleaseUrl(payload.releaseUrl?.trim() || null);
+        return;
+      } catch {
+        if (cancelled) {
+          return;
+        }
+
+        if (attempt < 10) {
+          retryTimer = window.setTimeout(() => {
+            void loadVersion(attempt + 1);
+          }, 1500);
+        }
+      }
+    };
+
+    void loadVersion(0);
+
+    return () => {
+      cancelled = true;
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 1024px)");
     const handler = (ev: MediaQueryListEvent) => setIsMobile(ev.matches);
@@ -744,6 +829,10 @@ const App = () => {
       <AppRouter
         authReady={authReady}
         authUser={authUser}
+        appVersion={appVersion}
+        latestVersion={latestVersion}
+        hasUpdate={hasUpdate}
+        releaseUrl={releaseUrl}
         authMode={authMode}
         authEmail={authEmail}
         authPassword={authPassword}

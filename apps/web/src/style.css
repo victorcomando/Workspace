@@ -15,7 +15,6 @@
   --control-size: clamp(36px, 3.8vw, 40px);
   --sidebar-pad-x: clamp(12px, 1.2vw, 16px);
   --sidebar-pad-top: clamp(12px, 1.4vw, 16px);
-  --sidebar-footer-reserve: clamp(72px, 10vh, 84px);
   --content-pad-x: clamp(12px, 2vw, 24px);
   --content-pad-bottom: clamp(10px, 1.1vw, 14px);
   --content-pad-top: calc(var(--header-height) + var(--space-lg));
@@ -102,9 +101,9 @@ body {
   background: var(--bg-sidebar);
   color: var(--text-sidebar);
   border-right: 1px solid var(--sidebar-border);
-  padding: var(--sidebar-pad-top) var(--sidebar-pad-x) var(--sidebar-footer-reserve);
+  padding: var(--sidebar-pad-top) var(--sidebar-pad-x) var(--space-sm);
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   gap: var(--space-lg);
   overflow: hidden;
 }
@@ -120,7 +119,8 @@ body {
   gap: var(--space-xs);
   align-content: start;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .app-sidebar__nav a,
@@ -135,14 +135,33 @@ body {
 }
 
 .app-sidebar__footer {
-  position: absolute;
-  left: var(--sidebar-pad-x);
-  right: var(--sidebar-pad-x);
-  bottom: var(--space-sm);
+  display: grid;
+  gap: var(--space-2xs);
   padding-top: var(--space-md);
   padding-bottom: max(var(--space-xs), env(safe-area-inset-bottom));
   border-top: 1px solid color-mix(in srgb, var(--sidebar-border) 70%, var(--text-sidebar) 30%);
   background: color-mix(in srgb, var(--bg-sidebar) 92%, transparent 8%);
+}
+
+.app-sidebar__version {
+  margin-top: 0;
+  padding: 0 var(--space-md);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--text-sidebar) 75%, #ffffff 25%);
+}
+
+.app-sidebar__update-link {
+  margin-top: 2px;
+  padding: 0 var(--space-md);
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: #facc15;
+  text-decoration: none;
+}
+
+.app-sidebar__update-link:hover {
+  text-decoration: underline;
 }
 
 .app-sidebar__nav a:hover,
@@ -844,7 +863,6 @@ body {
     --sidebar-width: min(240px, 86vw);
     --sidebar-pad-x: 12px;
     --sidebar-pad-top: 14px;
-    --sidebar-footer-reserve: 82px;
     --content-pad-x: 14px;
     --content-pad-top: calc(var(--header-height) + var(--space-md));
     --content-pad-bottom: 14px;

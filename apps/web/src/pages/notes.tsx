@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { useAppToast } from "../hooks/use-app-toast.tsx";
 
 type Note = {
   id: number;
@@ -38,13 +39,13 @@ export const NotesPage = () => {
   const [items, setItems] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pinned, setPinned] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const { showToast, toaster } = useAppToast();
 
   const toPlainText = (value: string | null) =>
     (value ?? "")
@@ -59,7 +60,6 @@ export const NotesPage = () => {
 
   const loadNotes = async () => {
     setLoading(true);
-    setErrorMessage("");
     try {
       const response = await fetch(`${BASE_URL}?page=1&limit=200`);
       if (!response.ok) {
@@ -69,8 +69,9 @@ export const NotesPage = () => {
       setItems(payload.data);
     } catch (error) {
       setItems([]);
-      setErrorMessage(
+      showToast(
         error instanceof Error ? error.message : "Falha ao carregar notas",
+        { title: "Notas", color: "danger" },
       );
     } finally {
       setLoading(false);
@@ -118,7 +119,6 @@ export const NotesPage = () => {
     setTitle("");
     setContent("");
     setPinned(false);
-    setErrorMessage("");
   };
 
   const selectNote = (note: Note) => {
@@ -126,17 +126,18 @@ export const NotesPage = () => {
     setTitle(note.title);
     setContent(note.content ?? "");
     setPinned(note.pinned);
-    setErrorMessage("");
   };
 
   const saveNote = async () => {
     if (!title.trim()) {
-      setErrorMessage("Informe um titulo para a nota.");
+      showToast("Informe um título para a nota.", {
+        title: "Notas",
+        color: "warning",
+      });
       return;
     }
 
     setSaving(true);
-    setErrorMessage("");
 
     const isEditing = selectedId !== null;
     const url = isEditing ? `${BASE_URL}/${selectedId}` : BASE_URL;
@@ -169,8 +170,9 @@ export const NotesPage = () => {
       setSelectedId(saved.id);
       setReloadTick((value) => value + 1);
     } catch (error) {
-      setErrorMessage(
+      showToast(
         error instanceof Error ? error.message : "Falha ao salvar nota",
+        { title: "Notas", color: "danger" },
       );
     } finally {
       setSaving(false);
@@ -188,7 +190,6 @@ export const NotesPage = () => {
     }
 
     setSaving(true);
-    setErrorMessage("");
 
     try {
       const response = await fetch(`${BASE_URL}/${selectedId}`, {
@@ -202,8 +203,9 @@ export const NotesPage = () => {
       startNewNote();
       setReloadTick((value) => value + 1);
     } catch (error) {
-      setErrorMessage(
+      showToast(
         error instanceof Error ? error.message : "Falha ao remover nota",
+        { title: "Notas", color: "danger" },
       );
     } finally {
       setSaving(false);
@@ -306,9 +308,8 @@ export const NotesPage = () => {
           />
           <span>Fixar no topo</span>
         </label>
-
-        {errorMessage && <p className="modal-error">{errorMessage}</p>}
       </div>
+      {toaster}
     </section>
   );
 };

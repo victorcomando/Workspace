@@ -5,7 +5,6 @@ import {
   CFormInput,
   CFormSelect,
   CFormTextarea,
-  CModal,
   CModalBody,
   CModalFooter,
   CModalHeader,
@@ -13,6 +12,9 @@ import {
 } from "@coreui/react";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+import { useAppToast } from "../hooks/use-app-toast.tsx";
+import { AppModal } from "../components/app-modal.tsx";
 
 type Workday = {
   id: number;
@@ -45,6 +47,7 @@ const WEEKDAY_LABELS = [
 const SIX_ROWS_SLOTS = 42;
 
 export const CalendarPage = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Workday[]>([]);
   const [visibleDate, setVisibleDate] = useState(() => {
     const now = new Date();
@@ -58,8 +61,8 @@ export const CalendarPage = () => {
   const [obs, setObs] = useState("");
   const [worked, setWorked] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const { showToast, toaster } = useAppToast();
 
   const toMonthAnchor = (date: Date) =>
     new Date(date.getFullYear(), date.getMonth(), 1);
@@ -78,10 +81,14 @@ export const CalendarPage = () => {
       setItems(payload.data);
     };
 
-    load().catch(() => {
+    load().catch((error) => {
       setItems([]);
+      showToast(
+        error instanceof Error ? error.message : "Falha ao carregar workdays",
+        { title: "Calendário", color: "danger" },
+      );
     });
-  }, [visibleDate, reloadTick]);
+  }, [visibleDate, reloadTick, showToast]);
 
   const workdaysByDate = useMemo(() => {
     const map = new Map<string, Workday[]>();
@@ -122,7 +129,6 @@ export const CalendarPage = () => {
     const jobs = workdaysByDate.get(key) ?? [];
 
     setSelectedDate(key);
-    setErrorMessage("");
 
     if (jobs.length > 0) {
       const firstJob = jobs[0];
@@ -163,7 +169,10 @@ export const CalendarPage = () => {
       return;
     }
     if (!jobName.trim()) {
-      setErrorMessage("Informe o nome do trabalho.");
+      showToast("Informe o nome do trabalho.", {
+        title: "Calendário",
+        color: "warning",
+      });
       return;
     }
 
@@ -174,7 +183,6 @@ export const CalendarPage = () => {
     const method = isEditing ? "PATCH" : "POST";
 
     setSaving(true);
-    setErrorMessage("");
 
     try {
       const response = await fetch(url, {
@@ -203,8 +211,9 @@ export const CalendarPage = () => {
       setModalVisible(false);
       setReloadTick((value) => value + 1);
     } catch (error) {
-      setErrorMessage(
+      showToast(
         error instanceof Error ? error.message : "Falha ao salvar trabalho",
+        { title: "Calendário", color: "danger" },
       );
     } finally {
       setSaving(false);
@@ -216,17 +225,36 @@ export const CalendarPage = () => {
   const deleteWorkday = async () => {
     if (!selectedJobId || selectedJobId === "new") return;
     setSaving(true);
-    setErrorMessage("");
     try {
       const response = await fetch(`/api/v1/workdays/${selectedJobId}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Falha ao remover trabalho");
       setModalVisible(false);
       setReloadTick((v) => v + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Falha ao remover trabalho");
+      showToast(
+        err instanceof Error ? err.message : "Falha ao remover trabalho",
+        { title: "Calendário", color: "danger" },
+      );
     } finally {
       setSaving(false);
     }
+  };
+
+  const goToSalaryConfig = () => {
+    const trimmedJobName = jobName.trim();
+    if (!trimmedJobName) {
+      showToast("Informe o nome do trabalho para configurar salário.", {
+        title: "Calendário",
+        color: "warning",
+      });
+      return;
+    }
+
+    const query = new URLSearchParams({
+      job: trimmedJobName,
+      from: "/calendar",
+    });
+    navigate(`/config?${query.toString()}`);
   };
 
   const monthLabel = format(visibleDate, "MMMM yyyy", { locale: ptBR });
@@ -314,8 +342,7 @@ export const CalendarPage = () => {
         </div>
       </div>
 
-      <CModal
-        className="calendar-modal"
+      <AppModal
         alignment="center"
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -384,9 +411,13 @@ export const CalendarPage = () => {
             onChange={(event) => setWorked(event.target.checked)}
           />
 
-          {errorMessage && <p className="modal-error">{errorMessage}</p>}
         </CModalBody>
         <CModalFooter>
+          {selectedDateJobs.length > 0 && (
+            <CButton color="secondary" variant="outline" onClick={goToSalaryConfig} disabled={saving}>
+              Configurar salário deste trabalho
+            </CButton>
+          )}
           {selectedJobId !== "new" && (
             <CButton
               color="danger"
@@ -402,7 +433,7 @@ export const CalendarPage = () => {
           </CButton>
         </CModalFooter>
 
-        <CModal className="calendar-modal" alignment="center" visible={confirmVisible} onClose={() => setConfirmVisible(false)}>
+        <AppModal alignment="center" visible={confirmVisible} onClose={() => setConfirmVisible(false)}>
           <CModalHeader>
             <CModalTitle>Confirmar exclusão</CModalTitle>
           </CModalHeader>
@@ -411,8 +442,9 @@ export const CalendarPage = () => {
             <CButton color="secondary" variant="outline" onClick={() => setConfirmVisible(false)}>Cancelar</CButton>
             <CButton color="danger" onClick={() => { setConfirmVisible(false); deleteWorkday(); }} disabled={saving}>Excluir</CButton>
           </CModalFooter>
-        </CModal>
-      </CModal>
+        </AppModal>
+      </AppModal>
+      {toaster}
     </section>
   );
 };

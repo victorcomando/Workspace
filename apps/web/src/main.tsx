@@ -4,7 +4,6 @@ import CIcon from "@coreui/icons-react";
 import "@coreui/coreui/dist/css/coreui.min.css";
 import {
   CButton,
-  CModal,
   CModalBody,
   CModalFooter,
   CModalHeader,
@@ -38,6 +37,8 @@ import { ReportsPage } from "./pages/reports.tsx";
 import { SettingsPage } from "./pages/settings.tsx";
 import { NotFoundPage } from "./pages/not-found.tsx";
 import { NotesPage } from "./pages/notes.tsx";
+import { useAppToast } from "./hooks/use-app-toast.tsx";
+import { AppModal } from "./components/app-modal.tsx";
 
 type AuthUser = {
   id: number;
@@ -54,7 +55,6 @@ type AuthPageProps = {
   authEmail: string;
   authPassword: string;
   authLoading: boolean;
-  authError: string;
   showSessionInvalidatedNotice: boolean;
   onModeChange: (mode: "login" | "register") => void;
   onEmailChange: (value: string) => void;
@@ -117,7 +117,6 @@ const AuthPage = ({
   authEmail,
   authPassword,
   authLoading,
-  authError,
   showSessionInvalidatedNotice,
   onModeChange,
   onEmailChange,
@@ -125,12 +124,11 @@ const AuthPage = ({
   onDismissSessionNotice,
   onSubmit,
 }: AuthPageProps) => {
-  const canSubmit = authEmail.trim().length > 0 && authPassword.length >= 6 && !authLoading;
+  const canSubmit = !authLoading;
 
   return (
     <div className="auth-screen">
-      <CModal
-        className="calendar-modal"
+      <AppModal
         alignment="center"
         backdrop="static"
         visible={showSessionInvalidatedNotice}
@@ -147,7 +145,7 @@ const AuthPage = ({
             Entendi
           </CButton>
         </CModalFooter>
-      </CModal>
+      </AppModal>
       <div className="auth-card">
         <h1>Workspace</h1>
         <p>Entre ou registre-se para continuar.</p>
@@ -201,9 +199,17 @@ const AuthPage = ({
             />
           </label>
 
-          {authError && <p className="modal-error">{authError}</p>}
-
-          <button type="submit" className="pager-btn auth-submit-btn" disabled={!canSubmit}>
+          <button
+            type="submit"
+            className="pager-btn auth-submit-btn"
+            disabled={!canSubmit}
+            onClick={(event) => {
+              event.preventDefault();
+              if (canSubmit) {
+                void onSubmit();
+              }
+            }}
+          >
             {authLoading ? "Aguarde..." : authMode === "login" ? "Entrar" : "Registrar"}
           </button>
         </form>
@@ -222,10 +228,22 @@ const AppLayout = ({
   onLogout,
 }: AppLayoutProps) => {
   const location = useLocation();
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname, setSidebarOpen]);
+
+  const handleConfirmLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await onLogout();
+    } finally {
+      setLogoutLoading(false);
+      setConfirmLogoutVisible(false);
+    }
+  };
 
   return (
     <div className="layout">
@@ -283,7 +301,13 @@ const AppLayout = ({
         </div>
 
         <div className="header__left">
-          <button className="theme-toggle" type="button" onClick={() => void onLogout()} aria-label="Sair" title="Sair">
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={() => setConfirmLogoutVisible(true)}
+            aria-label="Sair"
+            title="Sair"
+          >
             <CIcon icon={cilAccountLogout} />
           </button>
           <button
@@ -301,6 +325,35 @@ const AppLayout = ({
       <main className="content">
         <Outlet />
       </main>
+
+      <AppModal
+        alignment="center"
+        visible={confirmLogoutVisible}
+        onClose={() => setConfirmLogoutVisible(false)}
+      >
+        <CModalHeader>
+          <CModalTitle>Confirmar saída</CModalTitle>
+        </CModalHeader>
+        <CModalBody>Tem certeza que deseja sair?</CModalBody>
+        <CModalFooter>
+          <button
+            type="button"
+            className="pager-btn"
+            onClick={() => setConfirmLogoutVisible(false)}
+            disabled={logoutLoading}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="pager-btn btn-danger-outline"
+            onClick={() => void handleConfirmLogout()}
+            disabled={logoutLoading}
+          >
+            {logoutLoading ? "Saindo..." : "Sair"}
+          </button>
+        </CModalFooter>
+      </AppModal>
     </div>
   );
 };
@@ -312,7 +365,6 @@ const AppRouter = ({
   authEmail,
   authPassword,
   authLoading,
-  authError,
   setAuthMode,
   setAuthEmail,
   setAuthPassword,
@@ -330,7 +382,6 @@ const AppRouter = ({
   authEmail: string;
   authPassword: string;
   authLoading: boolean;
-  authError: string;
   setAuthMode: (mode: "login" | "register") => void;
   setAuthEmail: (value: string) => void;
   setAuthPassword: (value: string) => void;
@@ -393,7 +444,6 @@ const AppRouter = ({
               authEmail={authEmail}
               authPassword={authPassword}
               authLoading={authLoading}
-              authError={authError}
               showSessionInvalidatedNotice={showSessionInvalidatedNotice}
               onModeChange={(mode) => {
                 setAuthMode(mode);
@@ -464,8 +514,8 @@ const App = () => {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState("");
   const isForcingLogoutRef = useRef(false);
+  const { showToast, toaster } = useAppToast();
 
   const clearAuthState = useCallback(() => {
     setAuthToken(null);
@@ -473,7 +523,6 @@ const App = () => {
     setAuthEmail("");
     setAuthPassword("");
     setAuthMode("login");
-    setAuthError("");
     setAuthReady(true);
   }, []);
 
@@ -632,12 +681,14 @@ const App = () => {
     const email = authEmail.trim().toLowerCase();
 
     if (!email || authPassword.length < 6) {
-      setAuthError("Informe e-mail válido e senha com no mínimo 6 caracteres");
+      showToast("Informe e-mail válido e senha com no mínimo 6 caracteres", {
+        title: "Autenticação",
+        color: "warning",
+      });
       return;
     }
 
     setAuthLoading(true);
-    setAuthError("");
 
     try {
       const response = await fetch(
@@ -661,7 +712,7 @@ const App = () => {
         const message = Array.isArray(payload?.message)
           ? payload.message[0]
           : payload?.message;
-        throw new Error(message || "Falha de autenticacao");
+        throw new Error(message || "Falha de autenticação");
       }
 
       const data = (await response.json()) as AuthResponse;
@@ -670,9 +721,11 @@ const App = () => {
       setAuthEmail("");
       setAuthPassword("");
       setAuthMode("login");
-      setAuthError("");
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Erro desconhecido");
+      showToast(error instanceof Error ? error.message : "Erro desconhecido", {
+        title: "Autenticação",
+        color: "danger",
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -695,7 +748,6 @@ const App = () => {
         authEmail={authEmail}
         authPassword={authPassword}
         authLoading={authLoading}
-        authError={authError}
         setAuthMode={setAuthMode}
         setAuthEmail={setAuthEmail}
         setAuthPassword={setAuthPassword}
@@ -707,6 +759,7 @@ const App = () => {
         toggleTheme={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
         logout={logout}
       />
+      {toaster}
     </BrowserRouter>
   );
 };

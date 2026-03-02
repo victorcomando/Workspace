@@ -26,6 +26,7 @@ apps/api/prisma/**/*.db
 # tests/playwright
 playwright.config.ts
 apps/web/e2e/
+apps/web/test-results/
 apps/api/test/
 **/*.spec.ts
 **/*.e2e-spec.ts

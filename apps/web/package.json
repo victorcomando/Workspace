@@ -10,7 +10,8 @@
     "build": "tsc && vite build",
     "start": "vite preview --host 0.0.0.0 --port 5001 --strictPort",
     "preview": "vite preview",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\"",
+    "test:e2e": "playwright test e2e"
   },
   "dependencies": {
     "@coreui/coreui": "^5.5.0",
@@ -18,12 +19,14 @@
     "@coreui/icons-react": "^2.3.0",
     "@coreui/react": "^5.9.2",
     "date-fns": "^4.1.0",
+    "jspdf": "^4.2.0",
     "quill": "^2.0.3",
     "react": "^18.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^6.30.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

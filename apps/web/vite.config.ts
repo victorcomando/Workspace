@@ -9,6 +9,33 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) {
+              return;
+            }
+
+            if (id.includes("react-router-dom")) {
+              return "router";
+            }
+            if (id.includes("@coreui/")) {
+              return "coreui";
+            }
+            if (id.includes("react-big-calendar") || id.includes("date-fns")) {
+              return "calendar";
+            }
+            if (id.includes("react-quill") || id.includes("quill")) {
+              return "editor";
+            }
+            if (id.includes("react") || id.includes("react-dom")) {
+              return "react-vendor";
+            }
+          },
+        },
+      },
+    },
     server: {
       port,
       strictPort: true,

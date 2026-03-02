@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 type PackageJsonVersion = {
+  name?: string;
   version?: string;
 };
 
@@ -49,47 +50,19 @@ export class MetaService {
       if (!parsed) {
         continue;
       }
-      if (parsed.version) {
+      if (parsed.name === 'workspace-monorepo' && parsed.version) {
         return parsed;
       }
     }
 
-    return this.readPackageJson(resolve(process.cwd(), 'package.json'));
-  }
-
-  private readVersionFromPackageJson(filePath: string) {
-    if (!existsSync(filePath)) {
-      return null;
-    }
-
-    try {
-      const parsed = JSON.parse(
-        readFileSync(filePath, 'utf-8'),
-      ) as PackageJsonVersion;
-      const version = parsed.version?.trim();
-      return version || null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   getVersion() {
-    const envVersion = process.env.APP_VERSION?.trim();
-    if (envVersion) {
-      return { version: envVersion, source: 'env' as const };
-    }
-
     const rootPackageVersion =
       this.readRootPackageJson()?.version?.trim() || null;
     if (rootPackageVersion) {
       return { version: rootPackageVersion, source: 'root-package' as const };
-    }
-
-    const apiPackageVersion = this.readVersionFromPackageJson(
-      resolve(process.cwd(), 'apps/api/package.json'),
-    );
-    if (apiPackageVersion) {
-      return { version: apiPackageVersion, source: 'api-package' as const };
     }
 
     return { version: 'dev', source: 'fallback' as const };

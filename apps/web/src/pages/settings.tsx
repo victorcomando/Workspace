@@ -34,7 +34,7 @@ export const SettingsPage = () => {
   const [knownLocals, setKnownLocals] = useState<string[]>([]);
   const [configLoading, setConfigLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'salary' | 'coming'>('salary');
+  const [activeTab, setActiveTab] = useState<'salary'>('salary');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deepLinkJob, setDeepLinkJob] = useState<string | null>(null);
@@ -270,15 +270,6 @@ export const SettingsPage = () => {
           >
             Salários
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'coming'}
-            className={`reports-tab ${activeTab === 'coming' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('coming')}
-          >
-            Em construção
-          </button>
         </div>
       </header>
       {activeTab === 'salary' && (
@@ -333,13 +324,6 @@ export const SettingsPage = () => {
               </table>
             </div>
           )}
-        </article>
-      )}
-
-      {activeTab === 'coming' && (
-        <article className="reports-card">
-          <h3>Aba em construção</h3>
-          <p className="notes-state">Esta seção será implementada em breve.</p>
         </article>
       )}
 

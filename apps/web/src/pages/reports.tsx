@@ -67,7 +67,7 @@ export const ReportsPage = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null);
   const [salaryLoading, setSalaryLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'salary' | 'work' | 'coming'>('salary');
+  const [activeTab, setActiveTab] = useState<'salary' | 'work'>('salary');
 
   const [workdays, setWorkdays] = useState<Workday[]>([]);
   const [workLoading, setWorkLoading] = useState(false);
@@ -478,15 +478,6 @@ export const ReportsPage = () => {
           >
             Trabalhos
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'coming'}
-            className={`reports-tab ${activeTab === 'coming' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('coming')}
-          >
-            Em construção
-          </button>
         </div>
       </header>
 
@@ -592,13 +583,6 @@ export const ReportsPage = () => {
               </table>
             </div>
           )}
-        </article>
-      )}
-
-      {activeTab === 'coming' && (
-        <article className="reports-card">
-          <h3>Aba em construção</h3>
-          <p className="notes-state">Esta seção será implementada em breve.</p>
         </article>
       )}
 

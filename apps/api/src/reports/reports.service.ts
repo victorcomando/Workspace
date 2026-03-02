@@ -1,6 +1,19 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+type WorkExportType = 'message' | 'pdf' | 'spreadsheet';
+
+type WorkExportItem = {
+  id: number;
+  date: string;
+  jobName: string;
+  worked: boolean;
+  status: 'Trabalhado' | 'Pendente';
+  paymentType: 'diaria' | 'fixo' | null;
+  baseAmount: number | null;
+  receivableAmount: number;
+};
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -62,9 +75,16 @@ export class ReportsService {
   }
 
   private validateExportType(raw?: string) {
-    const exportType = raw?.trim().toLowerCase() || 'message';
-    if (exportType !== 'message') {
-      throw new BadRequestException("exportType deve ser 'message'");
+    const exportType = (raw?.trim().toLowerCase() ||
+      'message') as WorkExportType;
+    if (
+      exportType !== 'message' &&
+      exportType !== 'pdf' &&
+      exportType !== 'spreadsheet'
+    ) {
+      throw new BadRequestException(
+        "exportType deve ser 'message', 'pdf' ou 'spreadsheet'",
+      );
     }
     return exportType;
   }
@@ -98,7 +118,7 @@ export class ReportsService {
 
     const normalizedJob = params.job?.trim() || 'all';
     const selectedJobName = normalizedJob === 'all' ? null : normalizedJob;
-    this.validateExportType(params.exportType);
+    const exportType = this.validateExportType(params.exportType);
     const includeValues = this.parseIncludeValues(params.includeValues);
     const workedOnly = this.parseWorkedOnly(params.workedOnly);
     const startDate = new Date(year, month - 1, 1);
@@ -141,6 +161,21 @@ export class ReportsService {
           : 'Nenhum trabalho registrado neste mês.';
       return {
         message: `Relatório de trabalhos - ${this.monthNames[month - 1]}/${year}\n\n${emptyReason}`,
+        generatedAt: new Date().toISOString(),
+        exportType,
+        filters: {
+          month,
+          year,
+          job: selectedJobName ?? 'all',
+          includeValues,
+          workedOnly,
+        },
+        summary: {
+          totalCount: 0,
+          workedCount: 0,
+          totalReceivable: 0,
+        },
+        items: [],
       };
     }
 
@@ -159,6 +194,52 @@ export class ReportsService {
         configMap.set(key, config);
       }
     }
+
+    const firstWorkedByJob = new Map<string, number>();
+    for (const item of workdays) {
+      if (!item.worked) {
+        continue;
+      }
+      if (!firstWorkedByJob.has(item.jobName)) {
+        firstWorkedByJob.set(item.jobName, item.id);
+      }
+    }
+
+    const exportItems: WorkExportItem[] = workdays.map((item) => {
+      const config = configMap.get(this.normalizeText(item.jobName));
+      const paymentType = config ? this.normalizeTipo(config.tipo) : null;
+      const baseAmount = config?.valor ?? null;
+
+      let receivableAmount = 0;
+      if (item.worked && paymentType === 'diaria' && baseAmount !== null) {
+        receivableAmount = baseAmount;
+      }
+      if (
+        item.worked &&
+        paymentType === 'fixo' &&
+        baseAmount !== null &&
+        firstWorkedByJob.get(item.jobName) === item.id
+      ) {
+        receivableAmount = baseAmount;
+      }
+
+      return {
+        id: item.id,
+        date: item.date.toISOString(),
+        jobName: item.jobName,
+        worked: item.worked,
+        status: item.worked ? 'Trabalhado' : 'Pendente',
+        paymentType,
+        baseAmount,
+        receivableAmount,
+      };
+    });
+
+    const workedCountAll = workdays.filter((item) => item.worked).length;
+    const totalReceivableAll = exportItems.reduce(
+      (acc, item) => acc + item.receivableAmount,
+      0,
+    );
 
     const lines = workdays.map((item) => {
       const mark = item.worked ? 'x' : ' ';
@@ -207,6 +288,21 @@ export class ReportsService {
 
       return {
         message: `${headerWithValue}\n${lines.join('\n')}\n\n${totalsLine}`,
+        generatedAt: new Date().toISOString(),
+        exportType,
+        filters: {
+          month,
+          year,
+          job: selectedJobName,
+          includeValues,
+          workedOnly,
+        },
+        summary: {
+          totalCount,
+          workedCount,
+          totalReceivable: totalToReceive,
+        },
+        items: exportItems,
       };
     }
 
@@ -250,6 +346,21 @@ export class ReportsService {
 
     return {
       message: `Relatório de trabalhos - ${this.monthNames[month - 1]}/${year}\n\n${groupedSections.join('\n\n')}\n\nSoma total a receber: R$ ${this.formatMoney(grandTotalToReceive)}`,
+      generatedAt: new Date().toISOString(),
+      exportType,
+      filters: {
+        month,
+        year,
+        job: 'all',
+        includeValues,
+        workedOnly,
+      },
+      summary: {
+        totalCount: workdays.length,
+        workedCount: workedCountAll,
+        totalReceivable: totalReceivableAll,
+      },
+      items: exportItems,
     };
   }
 }

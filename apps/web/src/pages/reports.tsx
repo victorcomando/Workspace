@@ -25,9 +25,33 @@ type WorkdaysResponse = {
 
 type WorkExportResponse = {
   message: string;
+  generatedAt: string;
+  exportType: 'message' | 'pdf' | 'spreadsheet';
+  filters: {
+    month: number;
+    year: number;
+    job: string;
+    includeValues: boolean;
+    workedOnly: boolean;
+  };
+  summary: {
+    totalCount: number;
+    workedCount: number;
+    totalReceivable: number;
+  };
+  items: Array<{
+    id: number;
+    date: string;
+    jobName: string;
+    worked: boolean;
+    status: 'Trabalhado' | 'Pendente';
+    paymentType: 'diaria' | 'fixo' | null;
+    baseAmount: number | null;
+    receivableAmount: number;
+  }>;
 };
 
-type ExportType = 'message';
+type ExportType = 'message' | 'pdf' | 'spreadsheet';
 
 const numberFormatter = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
@@ -148,6 +172,51 @@ export const ReportsPage = () => {
     }
   };
 
+  const downloadBasePdf = async (text: string) => {
+    const normalizedText = text.trim();
+    if (!normalizedText) {
+      showToast('Nada para exportar em PDF.', {
+        title: 'Relatórios',
+        color: 'warning',
+      });
+      return;
+    }
+
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4',
+      compress: true,
+    });
+
+    const title = 'Relatorio de Trabalhos';
+    const subtitle = `Periodo: ${monthNames[month - 1]} de ${year}`;
+    const jobLabel = selectedJob === 'all' ? 'Todos' : selectedJob;
+    const filters = `Emprego: ${jobLabel} | Somente trabalhados: ${
+      workedOnly ? 'Sim' : 'Nao'
+    } | Com valores: ${includeValues ? 'Sim' : 'Nao'}`;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(title, 40, 52);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(subtitle, 40, 70);
+    doc.text(filters, 40, 85);
+
+    doc.setDrawColor(210, 210, 210);
+    doc.line(40, 94, 555, 94);
+
+    doc.setFontSize(11);
+    const wrappedLines = doc.splitTextToSize(normalizedText, 515);
+    doc.text(wrappedLines, 40, 114);
+
+    const monthPadded = month < 10 ? `0${month}` : String(month);
+    doc.save(`relatorio-${year}-${monthPadded}.pdf`);
+    showToast('PDF base gerado.', { title: 'Relatórios', color: 'success' });
+  };
+
   const copyToClipboard = async (text: string) => {
     if (!text.trim()) {
       showToast('Nada para copiar.', {
@@ -188,25 +257,179 @@ export const ReportsPage = () => {
     }
   };
 
-  const handleExport = async () => {
-    if (exportType !== 'message') {
-      showToast('Tipo de exportação não suportado.', {
+  const downloadSpreadsheet = async (payload: WorkExportResponse) => {
+    const headers = includeValues
+      ? [
+          'Data',
+          'Trabalho',
+          'Status',
+          'Tipo',
+          'Valor Base (R$)',
+          'Recebimento (R$)',
+        ]
+      : ['Data', 'Trabalho', 'Status'];
+
+    const rows = payload.items.map((item) => {
+      const baseRow = [new Date(item.date), item.jobName, item.status];
+
+      if (!includeValues) {
+        return baseRow;
+      }
+
+      const paymentTypeLabel =
+        item.paymentType === 'diaria'
+          ? 'Diária'
+          : item.paymentType === 'fixo'
+            ? 'Fixo'
+            : '-';
+
+      return [
+        ...baseRow,
+        paymentTypeLabel,
+        `R$ ${formatMoney(item.baseAmount ?? 0)}`,
+        `R$ ${formatMoney(item.receivableAmount)}`,
+      ];
+    });
+
+    const displayRows = payload.items.map((item) => {
+      const baseDisplay = [formatDate(item.date), item.jobName, item.status];
+      if (!includeValues) {
+        return baseDisplay;
+      }
+      const paymentTypeLabel =
+        item.paymentType === 'diaria'
+          ? 'Diária'
+          : item.paymentType === 'fixo'
+            ? 'Fixo'
+            : '-';
+      return [
+        ...baseDisplay,
+        paymentTypeLabel,
+        `R$ ${formatMoney(item.baseAmount ?? 0)}`,
+        `R$ ${formatMoney(item.receivableAmount)}`,
+      ];
+    });
+
+    if (rows.length === 0) {
+      showToast('Nenhum dado para exportar na planilha.', {
         title: 'Relatórios',
         color: 'warning',
       });
       return;
     }
 
+    const { utils, writeFile } = await import('xlsx');
+    const workbook = utils.book_new();
+    const dataSheet = utils.aoa_to_sheet([headers, ...rows], {
+      cellDates: true,
+    });
+
+    const headerRowIndex = 0;
+    const firstDataRowIndex = 1;
+    const lastDataRowIndex = rows.length;
+    const lastColIndex = headers.length - 1;
+    const rangeRef = `A1:${utils.encode_col(lastColIndex)}1`;
+
+    const autoWidths = headers.map((header, colIndex) => {
+      const contentMax = displayRows.reduce((max, row) => {
+        const cellValue = row[colIndex] ?? '';
+        return Math.max(max, String(cellValue).length);
+      }, 0);
+      return { wch: Math.min(48, Math.max(10, Math.max(header.length, contentMax) + 2)) };
+    });
+
+    dataSheet['!autofilter'] = { ref: rangeRef };
+    dataSheet['!cols'] = autoWidths;
+    dataSheet['!freeze'] = {
+      xSplit: 0,
+      ySplit: 1,
+      topLeftCell: 'A2',
+      activePane: 'bottomLeft',
+      state: 'frozen',
+    };
+
+    for (let row = firstDataRowIndex; row <= lastDataRowIndex; row += 1) {
+      const dateCellRef = utils.encode_cell({ c: 0, r: row });
+      const dateCell = dataSheet[dateCellRef];
+      if (dateCell) {
+        dateCell.z = 'dd/mm/yyyy';
+      }
+    }
+
+    if (includeValues) {
+      const totalRowIndex = lastDataRowIndex + 1;
+      const totalCellRef = utils.encode_cell({ c: 5, r: totalRowIndex });
+      dataSheet[totalCellRef] = {
+        t: 's',
+        v: `R$ ${formatMoney(payload.summary.totalReceivable)}`,
+      };
+
+      const currentRef = dataSheet['!ref'];
+      if (currentRef) {
+        const range = utils.decode_range(currentRef);
+        if (range.e.r < totalRowIndex) {
+          range.e.r = totalRowIndex;
+          dataSheet['!ref'] = utils.encode_range(range);
+        }
+      }
+    }
+    utils.book_append_sheet(workbook, dataSheet, 'Relatorio');
+
+    const metadataSheet = utils.aoa_to_sheet([
+      ['Campo', 'Valor'],
+      ['Gerado em', new Date(payload.generatedAt).toLocaleString('pt-BR')],
+      ['Período', `${monthNames[month - 1]} de ${year}`],
+      ['Emprego', selectedJob === 'all' ? 'Todos' : selectedJob],
+      ['Somente trabalhados', workedOnly ? 'Sim' : 'Não'],
+      ['Com valores', includeValues ? 'Sim' : 'Não'],
+      ['Total de registros', payload.summary.totalCount],
+      ['Dias trabalhados', payload.summary.workedCount],
+      ['Total a receber (R$)', payload.summary.totalReceivable],
+    ]);
+    metadataSheet['!cols'] = [{ wch: 24 }, { wch: 28 }];
+    const metaTotalCell = metadataSheet['B9'];
+    if (metaTotalCell) {
+      metaTotalCell.t = 's';
+      metaTotalCell.v = `R$ ${formatMoney(payload.summary.totalReceivable)}`;
+    }
+    utils.book_append_sheet(workbook, metadataSheet, 'Metadados');
+
+    const monthPadded = month < 10 ? `0${month}` : String(month);
+    const now = new Date();
+    const dayValue = now.getDate();
+    const hourValue = now.getHours();
+    const minuteValue = now.getMinutes();
+    const secondValue = now.getSeconds();
+    const day = dayValue < 10 ? `0${dayValue}` : String(dayValue);
+    const hour = hourValue < 10 ? `0${hourValue}` : String(hourValue);
+    const minute = minuteValue < 10 ? `0${minuteValue}` : String(minuteValue);
+    const second = secondValue < 10 ? `0${secondValue}` : String(secondValue);
+    writeFile(
+      workbook,
+      `relatorio-${year}-${monthPadded}-${day}-${hour}${minute}${second}.xlsx`,
+    );
+    showToast('Planilha gerada.', { title: 'Relatórios', color: 'success' });
+  };
+
+  const handleExport = async () => {
     setExportLoading(true);
     try {
+      const backendExportType = 'message';
       const response = await fetch(
-        `/api/v1/reports/work-export?month=${month}&year=${year}&job=${encodeURIComponent(selectedJob)}&exportType=${exportType}&includeValues=${includeValues ? 'true' : 'false'}&workedOnly=${workedOnly ? 'true' : 'false'}`,
+        `/api/v1/reports/work-export?month=${month}&year=${year}&job=${encodeURIComponent(selectedJob)}&exportType=${backendExportType}&includeValues=${includeValues ? 'true' : 'false'}&workedOnly=${workedOnly ? 'true' : 'false'}`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const payload: WorkExportResponse = await response.json();
-      await copyToClipboard(payload.message ?? '');
+      const message = payload.message ?? '';
+      if (exportType === 'pdf') {
+        await downloadBasePdf(message);
+      } else if (exportType === 'spreadsheet') {
+        await downloadSpreadsheet(payload);
+      } else {
+        await copyToClipboard(message);
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro desconhecido', {
         title: 'Relatórios',
@@ -412,6 +635,8 @@ export const ReportsPage = () => {
                 onChange={(event) => setExportType(event.target.value as ExportType)}
               >
                 <option value="message">Mensagem</option>
+                <option value="pdf">PDF</option>
+                <option value="spreadsheet">Planilha (Excel)</option>
               </select>
             </label>
             <label className="reports-check reports-check--modal">

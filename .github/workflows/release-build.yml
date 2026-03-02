@@ -4,18 +4,12 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (example: v1.0.0)'
-        required: true
-        default: 'v1.0.0'
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref_name || inputs.tag }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -23,19 +17,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Resolve tag
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Checkout tag
         uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ steps.vars.outputs.tag }}
+          ref: refs/tags/${{ github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -59,7 +44,7 @@ jobs:
 
       - name: Package artifacts
         run: |
-          TAG="${{ steps.vars.outputs.tag }}"
+          TAG="${{ github.ref_name }}"
           mkdir -p .release-bundle
           mkdir -p .release-artifacts
           rsync -a \
@@ -74,11 +59,11 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: .release-artifacts/workspace-${{ steps.vars.outputs.tag }}.tar.gz
-          asset_name: workspace-${{ steps.vars.outputs.tag }}.tar.gz
-          tag: ${{ steps.vars.outputs.tag }}
-          release_name: ${{ steps.vars.outputs.tag }}
-          body: Build bundle gerado automaticamente para ${{ steps.vars.outputs.tag }}.
+          file: .release-artifacts/workspace-${{ github.ref_name }}.tar.gz
+          asset_name: workspace-${{ github.ref_name }}.tar.gz
+          tag: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          body: Build bundle gerado automaticamente para ${{ github.ref_name }}.
           draft: false
           prerelease: false
           make_latest: true
